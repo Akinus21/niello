@@ -1,0 +1,7 @@
+NAME="Niello"
+PRETTY_NAME="Niello Linux"
+ID=niello
+ID_LIKE=fedora
+HOME_URL="https://forge.akinus21.com/akinus/niello"
+VARIANT="Niello"
+VARIANT_ID=niello

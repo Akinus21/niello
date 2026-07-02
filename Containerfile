@@ -1,4 +1,4 @@
-FROM ghcr.io/ublue-os/base-atomic:latest
+FROM ghcr.io/ublue-os/bluefin:latest
 
 # ── Metadata ────────────────────────────────────────────────
 LABEL org.opencontainers.image.title="Niello"

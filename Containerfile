@@ -272,6 +272,7 @@ RUN if [ "$GAMING" = "true" ]; then \
             steam-devices || true; \
         dnf install -y --skip-broken wine winetricks || true; \
         dnf install -y --skip-broken lutris || true; \
+        dnf install -y --skip-broken akmod-nvidia xorg-x11-drv-nvidia-cuda || true; \
         printf '# Gaming tweaks\nvm.max_map_count=2147483642\nkernel.split_lock_mitigate=0\n' > /etc/sysctl.d/99-gaming.conf; \
         groupadd -f gamemode; \
         touch /etc/niello-gaming; \

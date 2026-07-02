@@ -5,5 +5,5 @@ weston --backend=drm --shell=kiosk \
     --log=/var/lib/greeter/weston.log &
 WESTON_PID=$!
 sleep 1
-WAYLAND_DISPLAY=wayland-1 regreet -c /etc/greetd/regreet.css -s niri
+WAYLAND_DISPLAY=wayland-1 regreet -c /etc/greetd/regreet.css
 kill $WESTON_PID

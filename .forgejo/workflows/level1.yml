@@ -102,16 +102,15 @@ jobs:
         run: |
           set -e
           echo "=== Build image starting ==="
-          mkdir -p /run/user/0
-          mkdir -p /var/lib/containers
-          export CONTAINERS_STORAGE_ROOT=/var/lib/containers
-          export CONTAINERS_RUNROOT=/var/run/containers
           mkdir -p /etc/containers
-          printf '%s\n' '[storage]' 'driver = "vfs"' 'runroot = "/var/run/containers"' 'graphroot = "/var/lib/containers"' > /etc/containers/storage.conf
-          mkdir -p /etc/crio
-          mkdir -p /run/containers
+          printf '%s\n' '[storage]' 'driver = "vfs"' > /etc/containers/storage.conf
+          printf '%s\n' '[registries.insecure]' "registries = ['forge.akinus21.com']" > /etc/containers/registries.conf
+          export PODMAN_CGROUP_MANAGER=none
+          export PODMAN_USERNS=""
           echo "=== Running podman build ==="
           podman build \
+            --network=host \
+            --security-opt label=disable \
             --tag forge.akinus21.com/akinus/niello:latest \
             --tag forge.akinus21.com/akinus/niello:2026-07-02 \
             .
@@ -176,15 +175,14 @@ jobs:
             fi
 
             set +e
-            mkdir -p /run/user/0
-            mkdir -p /var/lib/containers
-            export CONTAINERS_STORAGE_ROOT=/var/lib/containers
-            export CONTAINERS_RUNROOT=/var/run/containers
             mkdir -p /etc/containers
-            printf '%s\n' '[storage]' 'driver = "vfs"' 'runroot = "/var/run/containers"' 'graphroot = "/var/lib/containers"' > /etc/containers/storage.conf
-            mkdir -p /etc/crio
-            mkdir -p /run/containers
+            printf '%s\n' '[storage]' 'driver = "vfs"' > /etc/containers/storage.conf
+            printf '%s\n' '[registries.insecure]' "registries = ['forge.akinus21.com']" > /etc/containers/registries.conf
+            export PODMAN_CGROUP_MANAGER=none
+            export PODMAN_USERNS=""
             podman build \
+              --network=host \
+              --security-opt label=disable \
               --tag forge.akinus21.com/akinus/niello:latest \
               --tag forge.akinus21.com/akinus/niello:2026-07-02 \
               . 2>&1 | tee /tmp/build.log
@@ -202,14 +200,11 @@ jobs:
         run: |
           set -e
           echo "=== Push image starting ==="
-          mkdir -p /run/user/0
-          mkdir -p /var/lib/containers
-          export CONTAINERS_STORAGE_ROOT=/var/lib/containers
-          export CONTAINERS_RUNROOT=/var/run/containers
           mkdir -p /etc/containers
-          printf '%s\n' '[storage]' 'driver = "vfs"' 'runroot = "/var/run/containers"' 'graphroot = "/var/lib/containers"' > /etc/containers/storage.conf
-          mkdir -p /etc/crio
-          mkdir -p /run/containers
+          printf '%s\n' '[storage]' 'driver = "vfs"' > /etc/containers/storage.conf
+          printf '%s\n' '[registries.insecure]' "registries = ['forge.akinus21.com']" > /etc/containers/registries.conf
+          export PODMAN_CGROUP_MANAGER=none
+          export PODMAN_USERNS=""
           echo "Checking auth file..."
           cat ~/.docker/config.json || echo "No auth file found!"
           echo "=== Auth file contents above ==="

@@ -57,9 +57,9 @@ jobs:
       - name: Registry login
         run: |
           set -euo pipefail
-          echo "Logging into $REGISTRY with user 'ci'"
+          echo "Logging into $REGISTRY"
           echo "${{ secrets.PACKAGE_TOKEN }}" | podman login "$REGISTRY" \
-            --username "ci" \
+            --username "${{ secrets.PACKAGE_TOKEN }}" \
             --password-stdin
 
       - name: Build image (iteration 0)

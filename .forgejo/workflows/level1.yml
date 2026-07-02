@@ -105,15 +105,28 @@ jobs:
           mkdir -p /etc/containers
           printf '%s\n' '[storage]' 'driver = "vfs"' > /etc/containers/storage.conf
           printf '%s\n' '[registries.insecure]' "registries = ['forge.akinus21.com']" > /etc/containers/registries.conf
-          export PODMAN_CGROUP_MANAGER=none
-          export PODMAN_USERNS=""
-          echo "=== Running podman build ==="
-          podman build \
-            --network=host \
-            --security-opt label=disable \
-            --tag forge.akinus21.com/akinus/niello:latest \
-            --tag forge.akinus21.com/akinus/niello:2026-07-02 \
-            .
+          # Try buildah first, fall back to podman
+          if command -v buildah >/dev/null 2>&1; then
+            echo "=== Using buildah ==="
+            buildah bud \
+              --storage-driver=vfs \
+              --tag forge.akinus21.com/akinus/niello:latest \
+              --tag forge.akinus21.com/akinus/niello:2026-07-02 \
+              .
+          elif command -v podman >/dev/null 2>&1; then
+            echo "=== Using podman ==="
+            export PODMAN_CGROUP_MANAGER=none
+            export PODMAN_USERNS=""
+            podman build \
+              --network=host \
+              --security-opt label=disable \
+              --tag forge.akinus21.com/akinus/niello:latest \
+              --tag forge.akinus21.com/akinus/niello:2026-07-02 \
+              .
+          else
+            echo "Neither buildah nor podman available!"
+            exit 1
+          fi
           echo "=== Build image completed ==="
 
       - name: AI-fix loop (3 attempts)
@@ -178,14 +191,24 @@ jobs:
             mkdir -p /etc/containers
             printf '%s\n' '[storage]' 'driver = "vfs"' > /etc/containers/storage.conf
             printf '%s\n' '[registries.insecure]' "registries = ['forge.akinus21.com']" > /etc/containers/registries.conf
-            export PODMAN_CGROUP_MANAGER=none
-            export PODMAN_USERNS=""
-            podman build \
-              --network=host \
-              --security-opt label=disable \
-              --tag forge.akinus21.com/akinus/niello:latest \
-              --tag forge.akinus21.com/akinus/niello:2026-07-02 \
-              . 2>&1 | tee /tmp/build.log
+            if command -v buildah >/dev/null 2>&1; then
+              echo "=== Using buildah ==="
+              buildah bud \
+                --storage-driver=vfs \
+                --tag forge.akinus21.com/akinus/niello:latest \
+                --tag forge.akinus21.com/akinus/niello:2026-07-02 \
+                . 2>&1 | tee /tmp/build.log
+            else
+              echo "=== Using podman ==="
+              export PODMAN_CGROUP_MANAGER=none
+              export PODMAN_USERNS=""
+              podman build \
+                --network=host \
+                --security-opt label=disable \
+                --tag forge.akinus21.com/akinus/niello:latest \
+                --tag forge.akinus21.com/akinus/niello:2026-07-02 \
+                . 2>&1 | tee /tmp/build.log
+            fi
             BUILD_RC=$?
             set -e
             if [ "$BUILD_RC" = "0" ]; then
@@ -203,8 +226,6 @@ jobs:
           mkdir -p /etc/containers
           printf '%s\n' '[storage]' 'driver = "vfs"' > /etc/containers/storage.conf
           printf '%s\n' '[registries.insecure]' "registries = ['forge.akinus21.com']" > /etc/containers/registries.conf
-          export PODMAN_CGROUP_MANAGER=none
-          export PODMAN_USERNS=""
           echo "Checking auth file..."
           cat ~/.docker/config.json || echo "No auth file found!"
           echo "=== Auth file contents above ==="
@@ -212,16 +233,36 @@ jobs:
           echo "Using date_tag: $DATE_TAG"
           echo "=== Pushing forge.akinus21.com/akinus/niello:latest ==="
           set -x
-          podman push \
-            --authfile ~/.docker/config.json \
-            forge.akinus21.com/akinus/niello:latest
+          if command -v buildah >/dev/null 2>&1; then
+            echo "=== Using buildah ==="
+            buildah push \
+              --authfile ~/.docker/config.json \
+              forge.akinus21.com/akinus/niello:latest
+          else
+            echo "=== Using podman ==="
+            export PODMAN_CGROUP_MANAGER=none
+            export PODMAN_USERNS=""
+            podman push \
+              --authfile ~/.docker/config.json \
+              forge.akinus21.com/akinus/niello:latest
+          fi
           echo "=== Pushed forge.akinus21.com/akinus/niello:latest ==="
           set +x
           echo "=== Pushing forge.akinus21.com/akinus/niello:$DATE_TAG ==="
           set -x
-          podman push \
-            --authfile ~/.docker/config.json \
-            forge.akinus21.com/akinus/niello:$DATE_TAG
+          if command -v buildah >/dev/null 2>&1; then
+            echo "=== Using buildah ==="
+            buildah push \
+              --authfile ~/.docker/config.json \
+              forge.akinus21.com/akinus/niello:$DATE_TAG
+          else
+            echo "=== Using podman ==="
+            export PODMAN_CGROUP_MANAGER=none
+            export PODMAN_USERNS=""
+            podman push \
+              --authfile ~/.docker/config.json \
+              forge.akinus21.com/akinus/niello:$DATE_TAG
+          fi
           set +x
           echo "=== Pushed forge.akinus21.com/akinus/niello:$DATE_TAG ==="
           echo "pushed forge.akinus21.com/akinus/niello:latest and forge.akinus21.com/akinus/niello:$DATE_TAG"

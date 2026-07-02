@@ -277,23 +277,11 @@ RUN if [ "$GAMING" = "true" ]; then \
         groupadd -f gamemode; \
         touch /etc/niello-gaming; \
         printf '#!/bin/sh\nexport __NV_PRIME_RENDER_OFFLOAD=1\nexport __GLX_VENDOR_LIBRARY_NAME=nvidia\nexport VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.x86_64.json:/usr/share/vulkan/icd.d/nvidia_icd.i686.json\n' > /etc/profile.d/niello-nvidia-gaming.sh; \
-        # Ensure NVIDIA Vulkan ICD is properly set up for regreet/weston
-        # akmod-nvidia installs the driver but ICD JSON may need manual setup in containers
         if [ -f /usr/lib64/libnvidia-vulkan.so.* ]; then \
             NVIDIA_VULKAN_LIB=$(ls /usr/lib64/libnvidia-vulkan.so.* 2>/dev/null | head -1); \
             NVIDIA_VULKAN_VERSION=$(echo "$NVIDIA_VULKAN_LIB" | sed 's/.*libnvidia-vulkan.so.\(.*\)/\1/'); \
-            mkdir -p /etc/vulkan/icd.d; \
-            cat > /etc/vulkan/icd.d/nvidia_icd.x86_64.json <<EOF
-{
-    "file_format_version": "1.0.0",
-    "ICD": {
-        "library_path": "/usr/lib64/libnvidia-vulkan.so.${NVIDIA_VULKAN_VERSION}",
-        "api_version": "1.3.293",
-        "is_portability_driver": false
-    }
-}
-EOF
-            mkdir -p /usr/share/vulkan/icd.d; \
+            mkdir -p /etc/vulkan/icd.d /usr/share/vulkan/icd.d; \
+            printf '{\n    "file_format_version": "1.0.0",\n    "ICD": {\n        "library_path": "/usr/lib64/libnvidia-vulkan.so.%s",\n        "api_version": "1.3.293",\n        "is_portability_driver": false\n    }\n}\n' "$NVIDIA_VULKAN_VERSION" > /etc/vulkan/icd.d/nvidia_icd.x86_64.json; \
             cp /etc/vulkan/icd.d/nvidia_icd.x86_64.json /usr/share/vulkan/icd.d/; \
             echo "Created NVIDIA Vulkan ICD for libnvidia-vulkan.so.${NVIDIA_VULKAN_VERSION}"; \
         fi; \

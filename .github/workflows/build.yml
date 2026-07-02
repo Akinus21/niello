@@ -1,115 +1,238 @@
-name: build
-on:
+---
+name: Build container image
+# bump3
+"on":
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: '05 10 * * *'  # 10:05am UTC everyday
   push:
-    branches: [main]
+    branches:
+      - main
+    paths-ignore:
+      - '**/README.md'
   workflow_dispatch:
 
 env:
-  IMAGE_NAME: niello
-  IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
   IMAGE_DESC: "Niello - A universal Linux container OS"
   IMAGE_KEYWORDS: "bootc,niello,linux,container"
-  BASE_IMAGE: ghcr.io/ublue-os/bluefin:latest
+  IMAGE_LOGO_URL: "https://avatars.githubusercontent.com/u/120078124?s=200&v=4"
+  IMAGE_NAME: "${{ github.event.repository.name }}"
+  IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build_push:
+    name: Build and push image
+    runs-on: ubuntu-24.04
+
     permissions:
       contents: read
       packages: write
-      security-events: write
-      attestations: write
       id-token: write
 
     steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@v2
+      - name: Prepare environment
+        run: |
+          echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >> ${GITHUB_ENV}
+          echo "IMAGE_NAME=${IMAGE_NAME,,}" >> ${GITHUB_ENV}
+
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Maximize build space
+        uses: ublue-os/remove-unwanted-software@695eb75bc387dbcd9685a8e72d23439d8686cba6
+
+      - name: Free additional disk space
+        run: |
+          echo "=== Disk before cleanup ==="
+          df -h
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf /usr/local/share/chromium
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/share/swift
+          sudo rm -rf /usr/local/.ghcup
+          sudo docker image prune -af || true
+          sudo docker system prune -af --volumes || true
+          echo "=== Disk after cleanup ==="
+          df -h
+
+      - name: Get current date
+        id: date
+        run: |
+          echo "date=$(date -u +%Y\-%m\-%d\T%H\:%M\:%S\Z)" >> $GITHUB_OUTPUT
+
+      - name: Image Metadata
+        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6.0.0
+        id: metadata
         with:
-          egress-policy: audit
+          tags: |
+            type=raw,value=latest
+            type=raw,value={{date 'YYYYMMDD'}}
+            type=sha,enable=${{ github.event_name == 'pull_request' }}
+            type=ref,event=pr
+          labels: |
+            io.artifacthub.package.readme-url=https://raw.githubusercontent.com/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}/${{ github.sha }}/README.md
+            org.opencontainers.image.created=${{ steps.date.outputs.date }}
+            org.opencontainers.image.description=${{ env.IMAGE_DESC }}
+            org.opencontainers.image.documentation=https://raw.githubusercontent.com/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}/${{ github.sha }}/README.md
+            org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}/blob/${{ github.sha }}/Containerfile
+            org.opencontainers.image.title=${{ env.IMAGE_NAME }}
+            org.opencontainers.image.url=https://github.com/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}/tree/${{ github.sha }}
+            org.opencontainers.image.vendor=${{ github.repository_owner }}
+            org.opencontainers.image.version=${{ steps.date.outputs.date }}
+            io.artifacthub.package.deprecated=false
+            io.artifacthub.package.keywords=${{ env.IMAGE_KEYWORDS }}
+            io.artifacthub.package.license=Apache-2.0
+            io.artifacthub.package.logo-url=${{ env.IMAGE_LOGO_URL }}
+            io.artifacthub.package.prerelease=false
+            containers.bootc=1
+          sep-tags: " "
+          sep-annotations: " "
 
-      - name: Check repo
-        uses: actions/checkout@v4
+      - name: Maximize build disk space
+        run: |
+          echo "=== Disk before build cleanup ==="
+          df -h
+          sudo rm -rf /var/tmp/* /tmp/* 2>/dev/null || true
+          sudo sync 2>/dev/null || true
+          echo 3 | sudo tee /proc/sys/vm/drop_caches 2>/dev/null || true
+          sudo podman system prune -af --volumes 2>/dev/null || true
+          sudo docker system prune -af --volumes 2>/dev/null || true
+          echo "=== Disk after build cleanup ==="
+          df -h
 
-      - name: elderscroll
-        id: build-image
-        uses: redhat-actions/buildah-build@v2
+      - name: Build Image
+        id: build_image
+        uses: redhat-actions/buildah-build@7a95fa7ee0f02d552a32753e7414641a04307056 # v2
         with:
           containerfiles: |
             ./Containerfile
-          oci: false
-          tags: |
-            latest
-            ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          build-args: |
-            BASE_IMAGE=${{ env.BASE_IMAGE }}
-
-      - name: Build kernel metadata
-        id: kernel
-        run: |
-          KVER=$(buildah from ${{ env.BASE_IMAGE }})
-          KMETA=$(buildah inspect $KVER --format '{{index .Docker.Metadata "Labels" "ostree.linux.kernel.version"}}')
-          KFLT=$(buildah inspect $KVER --format '{{index .Docker.Metadata "Labels" "ostree.linux.kernel.flavor"}}')
-          buildah rm $KVER
-          echo "VERSION=$KMETA" >> $GITHUB_OUTPUT
-          echo "FLAVOR=$KFLT" >> $GITHUB_OUTPUT
-          if [ -n "$KFLT" ]; then
-            echo "TAG=$KMETA-$KFLT" >> $GITHUB_OUTPUT
-          else
-            echo "TAG=$KMETA" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Add kernel tag
-        id: tags
-        run: |
-          echo "KERNEL_TAG=${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.kernel.outputs.TAG }}" >> $GITHUB_OUTPUT
-
-      - name: Set up Docker trust
-        run: |
-          mkdir -p ~/.docker/trust
-          chmod 755 ~/.docker/trust
-
-      - name: Disk cleanup
-        run: |
-          buildah rm --all
-          buildah images --all --format '{{.Name}}:{{.Tag}}' | xargs -r buildah rmi --force 2>/dev/null || true
-          rm -rf ~/.local/share/containers
-
-      - name: Image digest
-        run: |
-          echo 'Digest: ${{ steps.build-image.outputs.digest }}'
-
-      - name: Push to GitHub Container Registry
-        uses: redhat-actions/push-to-registry@v2
-        with:
           image: ${{ env.IMAGE_NAME }}
-          tags: |
-            ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.kernel.outputs.TAG }}
-          registry: ${{ env.IMAGE_REGISTRY }}
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          build-args: |
+            BASE_IMAGE=ghcr.io/ublue-os/bluefin:latest
+          oci: false
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4.1.0
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        with:
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build attestation
-        if: always()
-        uses: actions/attest-build-provenance@v1
+      - name: Push To GHCR
+        uses: redhat-actions/push-to-registry@v2.8
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        id: push
+        env:
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ github.token }}
         with:
-          subject-name: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build-image.outputs.digest }}
-          sha: ${{ github.sha }}
+          registry: ${{ env.IMAGE_REGISTRY }}
+          image: ${{ env.IMAGE_NAME }}
+          tags: ${{ steps.metadata.outputs.tags }}
+          username: ${{ env.REGISTRY_USER }}
+          password: ${{ env.REGISTRY_PASSWORD }}
 
-      - name: Webhook notification
-        if: always()
-        uses: distributhor/workflow-webhook@v2
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v4.1.1
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
         with:
-          webhook: ${{ secrets.WEBHOOK_HMAC_SECRET }}
-          url: https://hook.akinus21.com/niello-build
-          payload: |
-            {
-              "commit": "${{ github.sha }}",
-              "commit_message": "${{ github.event.head_commit.message }}",
-              "workflow": "${{ github.workflow }}",
-              "status": "${{ job.status }}",
-              "repository": "${{ github.repository }}",
-              "actor": "${{ github.actor }}"
-            }
-          content-type: application/json
-          accept: application/json
+          cosign-release: 'v2.6.1'
+
+      - name: Sign container image
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        run: |
+          IMAGE_FULL="${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}"
+          for tag in ${{ steps.metadata.outputs.tags }}; do
+            cosign sign -y --key env://COSIGN_PRIVATE_KEY $IMAGE_FULL:$tag
+          done
+        env:
+          TAGS: ${{ steps.push.outputs.digest }}
+          COSIGN_EXPERIMENTAL: false
+          COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
+
+      - name: Notify webhook on failure
+        if: failure() && github.ref == 'refs/heads/main'
+        env:
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_HMAC_SECRET }}
+        run: |
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          SHA="${{ github.sha }}"
+          COMMIT_MSG=$(git log -1 --pretty=format:"%s" "$SHA" 2>/dev/null || echo "unknown")
+          ERRORS=$(cat /tmp/build_errors.log 2>/dev/null | tail -200 | jq -Rs . || echo '"build log not found"')
+
+          PAYLOAD=$(jq -cn \
+            --arg run_url "$RUN_URL" \
+            --arg sha "$SHA" \
+            --arg commit_msg "$COMMIT_MSG" \
+            --arg ref "${{ github.ref_name }}" \
+            --arg actor "${{ github.actor }}" \
+            --argjson errors "$ERRORS" \
+            '{
+              run_url: $run_url,
+              sha: $sha,
+              commit_msg: $commit_msg,
+              ref: $ref,
+              actor: $actor,
+              errors: $errors
+            }')
+
+          SIG=$(printf '%s' "$PAYLOAD" | \
+            openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" | \
+            awk '{print "sha256="$2}')
+
+          curl -fsSL -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-GitHub-Event: build_failure" \
+            -H "X-Hub-Signature-256: $SIG" \
+            -d "$PAYLOAD" \
+            "https://webhook.akinus21.com/webhook/niello-build" || true
+
+      - name: Notify webhook on success
+        if: success() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_HMAC_SECRET }}
+        run: |
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          SHA="${{ github.sha }}"
+          COMMIT_MSG=$(git log -1 --pretty=format:"%s" "$SHA" 2>/dev/null || echo "unknown")
+
+          PAYLOAD=$(jq -cn \
+            --arg run_url "$RUN_URL" \
+            --arg sha "$SHA" \
+            --arg commit_msg "$COMMIT_MSG" \
+            --arg ref "${{ github.ref_name }}" \
+            --arg actor "${{ github.actor }}" \
+            --arg image "${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:latest" \
+            '{
+              event: "build_success",
+              run_url: $run_url,
+              sha: $sha,
+              commit_msg: $commit_msg,
+              ref: $ref,
+              actor: $actor,
+              image: $image
+            }')
+
+          SIG=$(printf '%s' "$PAYLOAD" | \
+            openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" | \
+            awk '{print "sha256="$2}')
+
+          curl -fsSL -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-GitHub-Event: build_success" \
+            -H "X-Hub-Signature-256: $SIG" \
+            -d "$PAYLOAD" \
+            "https://webhook.akinus21.com/webhook/niello-build" || true

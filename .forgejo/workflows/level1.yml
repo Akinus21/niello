@@ -57,7 +57,7 @@ jobs:
       - name: Registry login
         run: |
           set -euo pipefail
-          echo "${{ github.token }}" | podman login "$REGISTRY" \
+          echo "${{ secrets.PACKAGE_TOKEN }}" | podman login "$REGISTRY" \
             --username "${{ github.actor }}" \
             --password-stdin
 

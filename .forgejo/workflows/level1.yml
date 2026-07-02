@@ -107,14 +107,15 @@ jobs:
         id: build
         run: |
           set -e
+          export PODMAN_RUNROOT=/var/run/act/containers
+          export PODMAN_STORAGE-driver=vfs
           echo "=== Build image (iteration 0) starting ==="
-          echo "DATE_TAG=$(date -u +%Y-%m-%d)"
           DATE_TAG=$(date -u +%Y-%m-%d)
           echo "=== Running podman build ==="
           set -x
           podman build \
-            --tag "${IMAGE}:latest" \
-            --tag "${IMAGE}:${DATE_TAG}" \
+            --tag "$IMAGE:latest" \
+            --tag "$IMAGE:$DATE_TAG" \
             . 2>&1 | tee /tmp/build.log
           BUILD_RC=${PIPESTATUS[0]}
           set +x
@@ -123,7 +124,7 @@ jobs:
             echo "::error::Build step failed"
             exit 1
           fi
-          echo "date_tag=${DATE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "date_tag=$DATE_TAG" >> "$GITHUB_OUTPUT"
           echo "=== Build image (iteration 0) completed ==="
 
       - name: AI-fix loop (3 attempts)
@@ -187,8 +188,8 @@ jobs:
             set +e
             DATE_TAG=$(date -u +%Y-%m-%d)
             podman build \
-              --tag "${IMAGE}:latest" \
-              --tag "${IMAGE}:${DATE_TAG}" \
+              --tag "$IMAGE:latest" \
+              --tag "$IMAGE:$DATE_TAG" \
               . 2>&1 | tee /tmp/build.log
             BUILD_RC=$?
             set -e

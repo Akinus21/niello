@@ -111,30 +111,12 @@ jobs:
         run: |
           set -e
           echo "=== Build image starting ==="
-          # Try kaniko first (no Docker required)
-          if command -v /kaniko/executor >/dev/null 2>&1; then
-            echo "=== Using kaniko build ==="
-            /kaniko/executor \
-              --context /workspace/akinus/niello \
-              --destination forge.akinus21.com/akinus/niello:latest \
-              --destination forge.akinus21.com/akinus/niello:2026-07-02
-          elif command -v docker >/dev/null 2>&1; then
-            echo "=== Using docker build ==="
-            docker build \
-              --tag forge.akinus21.com/akinus/niello:latest \
-              --tag forge.akinus21.com/akinus/niello:2026-07-02 \
-              .
-          elif command -v podman >/dev/null 2>&1; then
-            echo "=== Using podman build ==="
-            podman build \
-              --storage-driver=vfs \
-              --tag forge.akinus21.com/akinus/niello:latest \
-              --tag forge.akinus21.com/akinus/niello:2026-07-02 \
-              .
-          else
-            echo "No build tool available!"
-            exit 1
-          fi
+          echo "=== Using podman build ==="
+          podman build \
+            --storage-driver=vfs \
+            --tag forge.akinus21.com/akinus/niello:latest \
+            --tag forge.akinus21.com/akinus/niello:2026-07-02 \
+            .
           echo "=== Build image completed ==="
 
       - name: AI-fix loop (3 attempts)
@@ -196,14 +178,7 @@ jobs:
             fi
 
             set +e
-            if command -v /kaniko/executor >/dev/null 2>&1; then
-              echo "=== Using kaniko build ==="
-              /kaniko/executor \
-                --context /workspace/akinus/niello \
-                --destination forge.akinus21.com/akinus/niello:latest \
-                --destination forge.akinus21.com/akinus/niello:2026-07-02 \
-                2>&1 | tee /tmp/build.log
-            elif command -v docker >/dev/null 2>&1; then
+            if command -v docker >/dev/null 2>&1; then
               echo "=== Using docker build ==="
               docker build \
                 --tag forge.akinus21.com/akinus/niello:latest \
@@ -237,20 +212,9 @@ jobs:
         run: |
           set -e
           echo "=== Push image starting ==="
-          if command -v /kaniko/executor >/dev/null 2>&1; then
-            echo "=== Using kaniko - push is automatic ==="
-          elif command -v docker >/dev/null 2>&1; then
-            echo "=== Using docker push ==="
-            docker push forge.akinus21.com/akinus/niello:latest
-            docker push forge.akinus21.com/akinus/niello:2026-07-02
-          elif command -v podman >/dev/null 2>&1; then
-            echo "=== Using podman push ==="
-            podman push --authfile ~/.docker/config.json forge.akinus21.com/akinus/niello:latest
-            podman push --authfile ~/.docker/config.json forge.akinus21.com/akinus/niello:2026-07-02
-          else
-            echo "No push tool available!"
-            exit 1
-          fi
+          echo "=== Using podman push ==="
+          podman push --authfile ~/.docker/config.json forge.akinus21.com/akinus/niello:latest
+          podman push --authfile ~/.docker/config.json forge.akinus21.com/akinus/niello:2026-07-02
           echo "=== Push image completed ==="
 
   # ============================================================

@@ -89,36 +89,19 @@ jobs:
       - name: Registry login
         run: |
           set -e
-          echo "=== Registry login starting ==="
-          echo "Creating Docker auth config for $REGISTRY"
-          echo "Actor: ${{ github.actor }}"
-          echo "Registry: $REGISTRY"
+          echo "Logging into $REGISTRY with user $GITHUB_ACTOR"
           mkdir -p ~/.docker
-          # Create auth JSON: base64 encode "username:token"
-          AUTH=$(echo -n "${{ github.actor }}:${{ secrets.PACKAGE_TOKEN }}" | base64 -w 0)
-          echo "Generated auth token (base64): ${AUTH:0:20}..."
-          cat > ~/.docker/config.json << EOF
-          {
-            "auths": {
-              "$REGISTRY": {
-                "auth": "${AUTH}"
-              }
-            }
-          }
-          EOF
-          echo "=== Auth config created ==="
+          # Use printf to avoid ash substitution issues
+          printf '%s' "$GITHUB_ACTOR:$PACKAGE_TOKEN" | base64 -w 0 > /tmp/auth_base64
+          AUTH=$(cat /tmp/auth_base64)
+          printf '{"auths":{"%s":{"auth":"%s"}}}' "$REGISTRY" "$AUTH" > ~/.docker/config.json
           cat ~/.docker/config.json
-          echo "=== Testing podman login ==="
-          set -x
-          podman login --authfile ~/.docker/config.json --username "${{ github.actor }}" --password-stdin "$REGISTRY" <<< "${{ secrets.PACKAGE_TOKEN }}"
-          LOGIN_RC=$?
-          set +x
-          echo "=== podman login completed with RC=$LOGIN_RC ==="
-          if [ "$LOGIN_RC" -ne 0 ]; then
-            echo "::error::Registry login failed"
-            exit 1
-          fi
-          echo "=== Registry login completed successfully ==="
+          rm -f /tmp/auth_base64
+          echo "Auth config created"
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          PACKAGE_TOKEN: ${{ secrets.PACKAGE_TOKEN }}
+          REGISTRY: ${{ env.REGISTRY }}
 
       - name: Build image (iteration 0)
         id: build

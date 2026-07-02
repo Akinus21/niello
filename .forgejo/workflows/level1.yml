@@ -111,7 +111,14 @@ jobs:
         run: |
           set -e
           echo "=== Build image starting ==="
-          if command -v docker >/dev/null 2>&1; then
+          # Try kaniko first (no Docker required)
+          if command -v /kaniko/executor >/dev/null 2>&1; then
+            echo "=== Using kaniko build ==="
+            /kaniko/executor \
+              --context /workspace/akinus/niello \
+              --destination forge.akinus21.com/akinus/niello:latest \
+              --destination forge.akinus21.com/akinus/niello:2026-07-02
+          elif command -v docker >/dev/null 2>&1; then
             echo "=== Using docker build ==="
             docker build \
               --tag forge.akinus21.com/akinus/niello:latest \
@@ -125,7 +132,7 @@ jobs:
               --tag forge.akinus21.com/akinus/niello:2026-07-02 \
               .
           else
-            echo "Neither docker nor podman available!"
+            echo "No build tool available!"
             exit 1
           fi
           echo "=== Build image completed ==="
@@ -189,7 +196,14 @@ jobs:
             fi
 
             set +e
-            if command -v docker >/dev/null 2>&1; then
+            if command -v /kaniko/executor >/dev/null 2>&1; then
+              echo "=== Using kaniko build ==="
+              /kaniko/executor \
+                --context /workspace/akinus/niello \
+                --destination forge.akinus21.com/akinus/niello:latest \
+                --destination forge.akinus21.com/akinus/niello:2026-07-02 \
+                2>&1 | tee /tmp/build.log
+            elif command -v docker >/dev/null 2>&1; then
               echo "=== Using docker build ==="
               docker build \
                 --tag forge.akinus21.com/akinus/niello:latest \
@@ -206,7 +220,7 @@ jobs:
                 --tag forge.akinus21.com/akinus/niello:2026-07-02 \
                 . 2>&1 | tee /tmp/build.log
             else
-              echo "Neither docker nor podman available!"
+              echo "No build tool available!"
               exit 1
             fi
             BUILD_RC=$?
@@ -223,48 +237,21 @@ jobs:
         run: |
           set -e
           echo "=== Push image starting ==="
-          echo "Checking auth file..."
-          cat ~/.docker/config.json || echo "No auth file found!"
-          echo "=== Auth file contents above ==="
-          DATE_TAG=2026-07-02
-          echo "Using date_tag: $DATE_TAG"
-          echo "=== Pushing forge.akinus21.com/akinus/niello:latest ==="
-          set -x
-          if command -v docker >/dev/null 2>&1; then
+          if command -v /kaniko/executor >/dev/null 2>&1; then
+            echo "=== Using kaniko - push is automatic ==="
+          elif command -v docker >/dev/null 2>&1; then
             echo "=== Using docker push ==="
             docker push forge.akinus21.com/akinus/niello:latest
+            docker push forge.akinus21.com/akinus/niello:2026-07-02
           elif command -v podman >/dev/null 2>&1; then
             echo "=== Using podman push ==="
-            export PODMAN_CGROUP_MANAGER=none
-            export PODMAN_USERNS=""
-            podman push \
-              --authfile ~/.docker/config.json \
-              forge.akinus21.com/akinus/niello:latest
+            podman push --authfile ~/.docker/config.json forge.akinus21.com/akinus/niello:latest
+            podman push --authfile ~/.docker/config.json forge.akinus21.com/akinus/niello:2026-07-02
           else
-            echo "Neither docker nor podman available!"
+            echo "No push tool available!"
             exit 1
           fi
-          echo "=== Pushed forge.akinus21.com/akinus/niello:latest ==="
-          set +x
-          echo "=== Pushing forge.akinus21.com/akinus/niello:$DATE_TAG ==="
-          set -x
-          if command -v docker >/dev/null 2>&1; then
-            echo "=== Using docker push ==="
-            docker push forge.akinus21.com/akinus/niello:$DATE_TAG
-          elif command -v podman >/dev/null 2>&1; then
-            echo "=== Using podman push ==="
-            export PODMAN_CGROUP_MANAGER=none
-            export PODMAN_USERNS=""
-            podman push \
-              --authfile ~/.docker/config.json \
-              forge.akinus21.com/akinus/niello:$DATE_TAG
-          else
-            echo "Neither docker nor podman available!"
-            exit 1
-          fi
-          set +x
-          echo "=== Pushed forge.akinus21.com/akinus/niello:$DATE_TAG ==="
-          echo "pushed forge.akinus21.com/akinus/niello:latest and forge.akinus21.com/akinus/niello:$DATE_TAG"
+          echo "=== Push image completed ==="
 
   # ============================================================
   # tidy: delete orphaned issue branches, toggle stale labels.

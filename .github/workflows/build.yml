@@ -64,7 +64,7 @@ jobs:
       - name: Add kernel tag
         id: tags
         run: |
-          echo "${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.kernel.outputs.TAG }}" >> $GITHUB_OUTPUT
+          echo "KERNEL_TAG=${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.kernel.outputs.TAG }}" >> $GITHUB_OUTPUT
 
       - name: Set up Docker trust
         run: |
@@ -78,7 +78,8 @@ jobs:
           rm -rf ~/.local/share/containers
 
       - name: Image digest
-        run: echo "Digest: ${{ steps.build-image.outputs.digest }}"
+        run: |
+          echo 'Digest: ${{ steps.build-image.outputs.digest }}'
 
       - name: Push to GitHub Container Registry
         uses: redhat-actions/push-to-registry@v2
@@ -95,20 +96,8 @@ jobs:
         if: always()
         uses: actions/attest-build-provenance@v1
         with:
-          subject-name: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-name: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build-image.outputs.digest }}
           sha: ${{ github.sha }}
-          push-ness: ${{ !cancelled() }}
-
-      - name: Sign image
-        if: always()
-        uses: redhat-actions/cosign-sign@v2
-        with:
-          image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build-image.outputs.digest }}
-          cosign-repo: sif:latest
-          signing-secret: ${{ secrets.SIGNING_SECRET }}
-          registry: ${{ env.IMAGE_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.SIGNING_SECRET }}
 
       - name: Webhook notification
         if: always()

@@ -41,18 +41,28 @@ jobs:
       - name: Preflight
         run: |
           set -euo pipefail
+          echo "=== Preflight starting ==="
+          echo "RUNNER_LABEL: $RUNNER_LABEL"
+          echo "CONTAINER_IMAGE: $CONTAINER_IMAGE"
+          echo "Checking podman..."
           command -v podman >/dev/null 2>&1 || {
             echo "::error::podman not on PATH — rebuild the rust-ci image with podman installed"
             exit 1
           }
+          echo "podman found: $(command -v podman)"
+          echo "Checking opencode..."
           command -v opencode >/dev/null 2>&1 || {
             echo "::error::opencode not on PATH"
             exit 1
           }
+          echo "opencode found: $(command -v opencode)"
+          echo "Checking github.token..."
           [ -n "${{ github.token }}" ] || {
             echo "::error::github.token is empty; ensure forgejo-actions auto-token is enabled"
             exit 1
           }
+          echo "github.token is present"
+          echo "=== Preflight completed ==="
 
       - name: Configure podman for insecure registry
         run: |
@@ -70,10 +80,14 @@ jobs:
       - name: Registry login
         run: |
           set -euo pipefail
+          echo "=== Registry login starting ==="
           echo "Creating Docker auth config for $REGISTRY"
+          echo "Actor: ${{ github.actor }}"
+          echo "Registry: $REGISTRY"
           mkdir -p ~/.docker
           # Create auth JSON: base64 encode "username:token"
           AUTH=$(echo -n "${{ github.actor }}:${{ secrets.PACKAGE_TOKEN }}" | base64 -w 0)
+          echo "Generated auth token (base64): ${AUTH:0:20}..."
           cat > ~/.docker/config.json << EOF
           {
             "auths": {
@@ -83,22 +97,42 @@ jobs:
             }
           }
           EOF
+          echo "=== Auth config created ==="
           cat ~/.docker/config.json
-          echo "Auth config created, testing with podman..."
-          # Test that podman can see the auth
+          echo "=== Testing podman login ==="
+          set -x
           podman login --authfile ~/.docker/config.json --username "${{ github.actor }}" --password-stdin "$REGISTRY" <<< "${{ secrets.PACKAGE_TOKEN }}"
+          LOGIN_RC=$?
+          set +x
+          echo "=== podman login completed with RC=$LOGIN_RC ==="
+          if [ "$LOGIN_RC" -ne 0 ]; then
+            echo "::error::Registry login failed"
+            exit 1
+          fi
+          echo "=== Registry login completed successfully ==="
 
       - name: Build image (iteration 0)
         id: build
-        continue-on-error: true
         run: |
-          set -o pipefail
+          set -euo pipefail
+          echo "=== Build image (iteration 0) starting ==="
+          echo "DATE_TAG=$(date -u +%Y-%m-%d)"
           DATE_TAG=$(date -u +%Y-%m-%d)
+          echo "=== Running podman build ==="
+          set -x
           podman build \
             --tag "${IMAGE}:latest" \
             --tag "${IMAGE}:${DATE_TAG}" \
             . 2>&1 | tee /tmp/build.log
+          BUILD_RC=${PIPESTATUS[0]}
+          set +x
+          echo "=== podman build completed with RC=$BUILD_RC ==="
+          if [ "$BUILD_RC" -ne 0 ]; then
+            echo "::error::Build step failed"
+            exit 1
+          fi
           echo "date_tag=${DATE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "=== Build image (iteration 0) completed ==="
 
       - name: AI-fix loop (3 attempts)
         if: steps.build.outcome == 'failure'
@@ -177,15 +211,33 @@ jobs:
       - name: Push image
         run: |
           set -euo pipefail
+          echo "=== Push image starting ==="
+          echo "Checking auth file..."
+          cat ~/.docker/config.json || echo "No auth file found!"
+          echo "=== Auth file contents above ==="
           DATE_TAG="${{ steps.build.outputs.date_tag }}"
+          echo "date_tag from build step: '$DATE_TAG'"
           # If build step succeeded, date_tag was set there.
           # If AI-fix loop ran, recalculate it.
           if [ -z "$DATE_TAG" ]; then
             DATE_TAG=$(date -u +%Y-%m-%d)
+            echo "Recalculated date_tag: $DATE_TAG"
             podman tag "${IMAGE}:latest" "${IMAGE}:${DATE_TAG}"
           fi
-          podman push "${IMAGE}:latest"
-          podman push "${IMAGE}:${DATE_TAG}"
+          echo "=== Pushing ${IMAGE}:latest ==="
+          set -x
+          podman push \
+            --authfile ~/.docker/config.json \
+            "${IMAGE}:latest"
+          echo "=== Pushed ${IMAGE}:latest ==="
+          set +x
+          echo "=== Pushing ${IMAGE}:${DATE_TAG} ==="
+          set -x
+          podman push \
+            --authfile ~/.docker/config.json \
+            "${IMAGE}:${DATE_TAG}"
+          set +x
+          echo "=== Pushed ${IMAGE}:${DATE_TAG} ==="
           echo "pushed ${IMAGE}:latest and ${IMAGE}:${DATE_TAG}"
 
   # ============================================================

@@ -103,29 +103,22 @@ jobs:
           PACKAGE_TOKEN: ${{ secrets.PACKAGE_TOKEN }}
           REGISTRY: ${{ env.REGISTRY }}
 
-      - name: Build image (iteration 0)
+      - name: Build image
         id: build
         run: |
           set -e
-          export PODMAN_RUNROOT=/var/run/act/containers
-          echo "=== Build image (iteration 0) starting ==="
-          DATE_TAG=$(date -u +%Y-%m-%d)
+          echo "=== Build image starting ==="
+          DATE_TAG=2026-07-02
           echo "=== Running podman build ==="
           set -x
           podman build \
+            --runroot=/var/run/act/containers \
             --storage-driver=vfs \
-            --tag "$IMAGE:latest" \
-            --tag "$IMAGE:$DATE_TAG" \
-            . 2>&1 | tee /tmp/build.log
-          BUILD_RC=${PIPESTATUS[0]}
+            --tag forge.akinus21.com/akinus/niello:latest \
+            --tag forge.akinus21.com/akinus/niello:$DATE_TAG \
+            .
           set +x
-          echo "=== podman build completed with RC=$BUILD_RC ==="
-          if [ "$BUILD_RC" -ne 0 ]; then
-            echo "::error::Build step failed"
-            exit 1
-          fi
-          echo "date_tag=$DATE_TAG" >> "$GITHUB_OUTPUT"
-          echo "=== Build image (iteration 0) completed ==="
+          echo "=== Build image completed ==="
 
       - name: AI-fix loop (3 attempts)
         if: steps.build.outcome == 'failure'
@@ -186,11 +179,12 @@ jobs:
             fi
 
             set +e
-            DATE_TAG=$(date -u +%Y-%m-%d)
+            DATE_TAG=2026-07-02
             podman build \
+              --runroot=/var/run/act/containers \
               --storage-driver=vfs \
-              --tag "$IMAGE:latest" \
-              --tag "$IMAGE:$DATE_TAG" \
+              --tag forge.akinus21.com/akinus/niello:latest \
+              --tag forge.akinus21.com/akinus/niello:$DATE_TAG \
               . 2>&1 | tee /tmp/build.log
             BUILD_RC=$?
             set -e
@@ -209,30 +203,23 @@ jobs:
           echo "Checking auth file..."
           cat ~/.docker/config.json || echo "No auth file found!"
           echo "=== Auth file contents above ==="
-          DATE_TAG="${{ steps.build.outputs.date_tag }}"
-          echo "date_tag from build step: '$DATE_TAG'"
-          # If build step succeeded, date_tag was set there.
-          # If AI-fix loop ran, recalculate it.
-          if [ -z "$DATE_TAG" ]; then
-            DATE_TAG=$(date -u +%Y-%m-%d)
-            echo "Recalculated date_tag: $DATE_TAG"
-            podman tag "${IMAGE}:latest" "${IMAGE}:${DATE_TAG}"
-          fi
-          echo "=== Pushing ${IMAGE}:latest ==="
+          DATE_TAG=2026-07-02
+          echo "Using date_tag: $DATE_TAG"
+          echo "=== Pushing forge.akinus21.com/akinus/niello:latest ==="
           set -x
           podman push \
             --authfile ~/.docker/config.json \
-            "${IMAGE}:latest"
-          echo "=== Pushed ${IMAGE}:latest ==="
+            forge.akinus21.com/akinus/niello:latest
+          echo "=== Pushed forge.akinus21.com/akinus/niello:latest ==="
           set +x
-          echo "=== Pushing ${IMAGE}:${DATE_TAG} ==="
+          echo "=== Pushing forge.akinus21.com/akinus/niello:$DATE_TAG ==="
           set -x
           podman push \
             --authfile ~/.docker/config.json \
-            "${IMAGE}:${DATE_TAG}"
+            forge.akinus21.com/akinus/niello:$DATE_TAG
           set +x
-          echo "=== Pushed ${IMAGE}:${DATE_TAG} ==="
-          echo "pushed ${IMAGE}:latest and ${IMAGE}:${DATE_TAG}"
+          echo "=== Pushed forge.akinus21.com/akinus/niello:$DATE_TAG ==="
+          echo "pushed forge.akinus21.com/akinus/niello:latest and forge.akinus21.com/akinus/niello:$DATE_TAG"
 
   # ============================================================
   # tidy: delete orphaned issue branches, toggle stale labels.

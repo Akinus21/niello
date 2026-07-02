@@ -164,17 +164,6 @@ COPY config/systemd/brew-update.service /etc/systemd/system/brew-update.service
 COPY config/systemd/brew-update.timer  /etc/systemd/system/brew-update.timer
 RUN systemctl enable brew-update.timer
 
-# ── Corten (AkTags successor) ─────────────────────────────────
-RUN git clone --depth=1 https://forge.akinus21.com/akinus/corten.git /tmp/corten && \
-    cd /tmp/corten && \
-    cargo build --release && \
-    install -Dm755 target/release/corten /usr/local/bin/corten && \
-    rm -rf /tmp/corten
-
-COPY config/systemd/corten-daemon.service /etc/skel/.config/systemd/user/corten-daemon.service
-COPY config/corten/corten.desktop        /etc/skel/.config/autostart/corten.desktop
-RUN mkdir -p /etc/skel/.config/autostart
-
 # ── weston + regreet greeter ──────────────────────────────────
 RUN dnf install -y --skip-broken weston
 

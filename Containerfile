@@ -1,5 +1,16 @@
 FROM quay.io/fedora/fedora-bootc:42
 
+# ── RPMFusion + Full Codec Stack (uBlue hardware enablement) ───
+RUN dnf install -y \
+    https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
+    https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm \
+    && dnf install -y \
+    mesa-va-drivers-freeworld \
+    mesa-vdpau-drivers-freeworld \
+    ffmpeg \
+    pipewire-codec-aptx \
+    && dnf clean all
+
 # ── Metadata ────────────────────────────────────────────────
 LABEL org.opencontainers.image.title="Niello"
 LABEL org.opencontainers.image.description="Immutable Fedora Atomic — Niri + Noctalia + Rust toolchain"
@@ -110,7 +121,11 @@ RUN dnf install -y \
     tesseract-langpack-eng \
     poppler-utils \
     odt2txt \
-    npm
+    npm \
+    dust \
+    procs \
+    starship \
+    uutils-coreutils
 
 RUN sed -i 's|^SHELL=.*|SHELL=/bin/zsh|' /etc/default/useradd 2>/dev/null || \
     echo 'SHELL=/bin/zsh' >> /etc/default/useradd

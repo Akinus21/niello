@@ -3,7 +3,7 @@ FROM ghcr.io/ublue-os/base-atomic:latest
 # ── Metadata ────────────────────────────────────────────────
 LABEL org.opencontainers.image.title="Niello"
 LABEL org.opencontainers.image.description="Immutable Fedora Atomic — Niri + Noctalia + Rust toolchain"
-LABEL org.opencontainers.image.source="https://forge.akinus21.com/akinus/niello"
+LABEL org.opencontainers.image.source="https://github.com/Akinus21/niello"
 LABEL org.opencontainers.image.vendor="akinus"
 
 # ── OS Identity ──────────────────────────────────────────────

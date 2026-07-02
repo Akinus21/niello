@@ -1,0 +1,129 @@
+name: build
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: niello
+  IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
+  IMAGE_DESC: "Niello - A universal Linux container OS"
+  IMAGE_KEYWORDS: "bootc,niello,linux,container"
+  BASE_IMAGE: ghcr.io/ublue-os/bluefin:latest
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+      attestations: write
+      id-token: write
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+
+      - name: Check repo
+        uses: actions/checkout@v4
+
+      - name: Set up buildah
+        uses: containers/buildah-setup@v1
+
+      - name:elderscroll
+        id: build-image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          containerfiles: |
+            ./Containerfile
+          oci: false
+          tags: |
+            latest
+            ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            BASE_IMAGE=${{ env.BASE_IMAGE }}
+
+      - name: Build kernel metadata
+        id: kernel
+        run: |
+          KVER=$(buildah from ${{ env.BASE_IMAGE }})
+          KMETA=$(buildah inspect $KVER --format '{{index .Docker.Metadata "Labels" "ostree.linux.kernel.version"}}')
+          KFLT=$(buildah inspect $KVER --format '{{index .Docker.Metadata "Labels" "ostree.linux.kernel.flavor"}}')
+          buildah rm $KVER
+          echo "VERSION=$KMETA" >> $GITHUB_OUTPUT
+          echo "FLAVOR=$KFLT" >> $GITHUB_OUTPUT
+          if [ -n "$KFLT" ]; then
+            echo "TAG=$KMETA-$KFLT" >> $GITHUB_OUTPUT
+          else
+            echo "TAG=$KMETA" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Add kernel tag
+        id: tags
+        run: |
+          echo "${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.kernel.outputs.TAG }}" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker trust
+        run: |
+          mkdir -p ~/.docker/trust
+          chmod 755 ~/.docker/trust
+
+      - name: Disk cleanup
+        run: |
+          buildah rm --all
+          buildah images --all --format '{{.Name}}:{{.Tag}}' | xargs -r buildah rmi --force 2>/dev/null || true
+          rm -rf ~/.local/share/containers
+
+      - name: Image digest
+        run: echo "Digest: ${{ steps.build-image.outputs.digest }}"
+
+      - name: Push to GitHub Container Registry
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ env.IMAGE_NAME }}
+          tags: |
+            ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.kernel.outputs.TAG }}
+          registry: ${{ env.IMAGE_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build attestation
+        if: always()
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
+          sha: ${{ github.sha }}
+          push-ness: ${{ !cancelled() }}
+
+      - name: Sign image
+        if: always()
+        uses: redhat-actions/cosign-sign@v2
+        with:
+          image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build-image.outputs.digest }}
+          cosign-repo: sif:latest
+          signing-secret: ${{ secrets.SIGNING_SECRET }}
+          registry: ${{ env.IMAGE_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.SIGNING_SECRET }}
+
+      - name: Webhook notification
+        if: always()
+        uses: distributhor/workflow-webhook@v2
+        with:
+          webhook: ${{ secrets.WEBHOOK_HMAC_SECRET }}
+          url: https://hook.akinus21.com/niello-build
+          payload: |
+            {
+              "commit": "${{ github.sha }}",
+              "commit_message": "${{ github.event.head_commit.message }}",
+              "workflow": "${{ github.workflow }}",
+              "status": "${{ job.status }}",
+              "repository": "${{ github.repository }}",
+              "actor": "${{ github.actor }}"
+            }
+          content-type: application/json
+          accept: application/json

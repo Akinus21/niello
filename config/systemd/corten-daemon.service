@@ -1,0 +1,13 @@
+[Unit]
+Description=Corten AI File Tagger Daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/corten --daemon
+Restart=on-failure
+RestartSec=5
+Environment=RUST_LOG=corten=info,warn
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Corten
+Comment=Corten AI-powered tag-based file browser
+Exec=/usr/local/bin/corten
+Icon=folder
+Terminal=false
+Type=Application
+Categories=Utility;FileTools;
+StartupNotify=true

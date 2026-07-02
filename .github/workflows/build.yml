@@ -30,9 +30,6 @@ jobs:
       - name: Check repo
         uses: actions/checkout@v4
 
-      - name: Set up buildah
-        uses: containers/buildah-setup@v1
-
       - name: elderscroll
         id: build-image
         uses: redhat-actions/buildah-build@v2

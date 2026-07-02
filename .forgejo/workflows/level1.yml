@@ -54,13 +54,19 @@ jobs:
             exit 1
           }
 
+      - name: Configure podman for insecure registry
+        run: |
+          mkdir -p /etc/containers
+          cat > /etc/containers/registries.conf << 'EOF'
+          [registries.insecure]
+          registries = ['forge.akinus21.com']
+          EOF
+
       - name: Registry login
         run: |
           set -euo pipefail
-          echo "Logging into $REGISTRY"
-          echo "${{ secrets.PACKAGE_TOKEN }}" | podman login "$REGISTRY" \
-            --username "${{ secrets.PACKAGE_TOKEN }}" \
-            --password-stdin
+          echo "Logging into $REGISTRY with user ${{ github.actor }}"
+          echo "${{ secrets.PACKAGE_TOKEN }}" | podman login --username "${{ github.actor }}" --password-stdin "$REGISTRY"
 
       - name: Build image (iteration 0)
         id: build

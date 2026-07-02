@@ -1,4 +1,4 @@
-FROM ghcr.io/ublue-os/base:latest
+FROM quay.io/fedora/fedora-bootc:42
 
 # ── Metadata ────────────────────────────────────────────────
 LABEL org.opencontainers.image.title="Niello"
@@ -15,7 +15,7 @@ RUN dnf install -y --skip-broken --nogpgcheck --repofrompath 'terra,https://repo
     dnf install -y --skip-broken noctalia-shell || echo "Terra repo unavailable — install noctalia-shell at runtime"
 
 # ── Desktop Stack ────────────────────────────────────────────
-RUN rpm-ostree install \
+RUN dnf install -y \
     niri \
     alacritty \
     swaybg \
@@ -33,8 +33,7 @@ RUN rpm-ostree install \
     waybar \
     fuzzel \
     xdg-user-dirs \
-    xdg-utils \
-    && ostree container commit
+    xdg-utils
 
 # ── CAC Smart Card Support ───────────────────────────────────
 RUN dnf install -y --skip-broken \

@@ -76,15 +76,9 @@ jobs:
       - name: Configure podman for insecure registry
         run: |
           mkdir -p /etc/containers
-          cat > /etc/containers/registries.conf << 'EOF'
-          [registries.insecure]
-          registries = ['forge.akinus21.com']
-          EOF
+          printf '%s\n' '[registries.insecure]' "registries = ['forge.akinus21.com']" > /etc/containers/registries.conf
           mkdir -p ~/.config/containers
-          cat > ~/.config/containers/registries.conf << 'EOF'
-          [registries.insecure]
-          registries = ['forge.akinus21.com']
-          EOF
+          printf '%s\n' '[registries.insecure]' "registries = ['forge.akinus21.com']" > ~/.config/containers/registries.conf
 
       - name: Registry login
         run: |
@@ -113,12 +107,7 @@ jobs:
           export CONTAINERS_STORAGE_ROOT=/var/lib/containers
           export CONTAINERS_RUNROOT=/var/run/containers
           mkdir -p /etc/containers
-          cat > /etc/containers/storage.conf << 'CONFEOF'
-[storage]
-driver = "vfs"
-runroot = "/var/run/containers"
-graphroot = "/var/lib/containers"
-CONFEOF
+          printf '%s\n' '[storage]' 'driver = "vfs"' 'runroot = "/var/run/containers"' 'graphroot = "/var/lib/containers"' > /etc/containers/storage.conf
           mkdir -p /etc/crio
           mkdir -p /run/containers
           echo "=== Running podman build ==="
@@ -192,12 +181,7 @@ CONFEOF
             export CONTAINERS_STORAGE_ROOT=/var/lib/containers
             export CONTAINERS_RUNROOT=/var/run/containers
             mkdir -p /etc/containers
-            cat > /etc/containers/storage.conf << 'CONFEOF'
-[storage]
-driver = "vfs"
-runroot = "/var/run/containers"
-graphroot = "/var/lib/containers"
-CONFEOF
+            printf '%s\n' '[storage]' 'driver = "vfs"' 'runroot = "/var/run/containers"' 'graphroot = "/var/lib/containers"' > /etc/containers/storage.conf
             mkdir -p /etc/crio
             mkdir -p /run/containers
             podman build \
@@ -223,12 +207,7 @@ CONFEOF
           export CONTAINERS_STORAGE_ROOT=/var/lib/containers
           export CONTAINERS_RUNROOT=/var/run/containers
           mkdir -p /etc/containers
-          cat > /etc/containers/storage.conf << 'CONFEOF'
-[storage]
-driver = "vfs"
-runroot = "/var/run/containers"
-graphroot = "/var/lib/containers"
-CONFEOF
+          printf '%s\n' '[storage]' 'driver = "vfs"' 'runroot = "/var/run/containers"' 'graphroot = "/var/lib/containers"' > /etc/containers/storage.conf
           mkdir -p /etc/crio
           mkdir -p /run/containers
           echo "Checking auth file..."

@@ -17,7 +17,7 @@ env:
   GITHUB_SERVER_URL:   ${{ github.server_url }}
   GITHUB_REPOSITORY:   ${{ github.repository }}
   RUNNER_LABEL:        ${{ vars.RUNNER_LABEL || 'rust-ci' }}
-  CONTAINER_IMAGE:     ${{ vars.CONTAINER_IMAGE || '' }}
+  CONTAINER_IMAGE:     ${{ vars.CONTAINER_IMAGE || 'ghcr.io/akinus21/rust-ci:latest' }}
 
 concurrency:
   group: level1-${{ github.ref }}

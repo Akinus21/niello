@@ -61,12 +61,32 @@ jobs:
           [registries.insecure]
           registries = ['forge.akinus21.com']
           EOF
+          mkdir -p ~/.config/containers
+          cat > ~/.config/containers/registries.conf << 'EOF'
+          [registries.insecure]
+          registries = ['forge.akinus21.com']
+          EOF
 
       - name: Registry login
         run: |
           set -euo pipefail
-          echo "Logging into $REGISTRY with user ${{ github.actor }}"
-          echo "${{ secrets.PACKAGE_TOKEN }}" | podman login --username "${{ github.actor }}" --password-stdin "$REGISTRY"
+          echo "Creating Docker auth config for $REGISTRY"
+          mkdir -p ~/.docker
+          # Create auth JSON: base64 encode "username:token"
+          AUTH=$(echo -n "${{ github.actor }}:${{ secrets.PACKAGE_TOKEN }}" | base64 -w 0)
+          cat > ~/.docker/config.json << EOF
+          {
+            "auths": {
+              "$REGISTRY": {
+                "auth": "${AUTH}"
+              }
+            }
+          }
+          EOF
+          cat ~/.docker/config.json
+          echo "Auth config created, testing with podman..."
+          # Test that podman can see the auth
+          podman login --authfile ~/.docker/config.json --username "${{ github.actor }}" --password-stdin "$REGISTRY" <<< "${{ secrets.PACKAGE_TOKEN }}"
 
       - name: Build image (iteration 0)
         id: build

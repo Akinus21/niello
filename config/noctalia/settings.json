@@ -1,0 +1,10 @@
+{
+  "colorSchemes": {
+    "darkMode": true,
+    "activeColorScheme": "Purple Haze"
+  },
+  "pluginRepositories": [
+    "https://github.com/Akinus21/noctalia-plugins",
+    "https://github.com/noctalia-dev/noctalia-plugins"
+  ]
+}

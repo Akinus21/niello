@@ -1,0 +1,9 @@
+[Unit]
+Description=Homebrew update and upgrade
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c 'export HOME="$HOME"; if command -v brew &>/dev/null; then brew update && brew upgrade; fi'
+StandardOutput=journal
+StandardError=journal

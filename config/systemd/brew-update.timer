@@ -1,0 +1,11 @@
+[Unit]
+Description=Homebrew update timer — runs after bootc nightly reboot
+After=bootc-nightly-reboot.service
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1d
+Persistent=true
+
+[Install]
+WantedBy=timers.target

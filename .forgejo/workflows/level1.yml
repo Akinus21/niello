@@ -32,8 +32,17 @@ jobs:
   build-push:
     if: contains(github.event.head_commit.message, '[release-bot-skip]') == false
     runs-on: ${{ vars.RUNNER_LABEL || 'rust-ci' }}
-    container: ${{ vars.CONTAINER_IMAGE || '' }}
+    container: ${{ vars.CONTAINER_IMAGE || 'ghcr.io/akinus21/rust-ci:latest' }}
     steps:
+      - name: Debug environment
+        run: |
+          echo "=== Environment ==="
+          echo "RUNNER_LABEL: ${{ vars.RUNNER_LABEL }}"
+          echo "CONTAINER_IMAGE: ${{ vars.CONTAINER_IMAGE }}"
+          echo "GITHUB_ACTOR: ${{ github.actor }}"
+          echo "REGISTRY: $REGISTRY"
+          echo "IMAGE: $IMAGE"
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0

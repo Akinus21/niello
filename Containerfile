@@ -191,10 +191,11 @@ RUN dnf install -y --skip-broken \
 
 # ── Clone + build noctalia-greeter ───────────────────────────────────────
 RUN git clone --depth=1 \
-    --branch=3f4b973761c58183cc39ae8d96bdd190e07e1d73 \
     https://github.com/noctalia-dev/noctalia-greeter.git \
     /tmp/noctalia-greeter && \
     cd /tmp/noctalia-greeter && \
+    git fetch --depth=1 origin 3f4b973761c58183cc39ae8d96bdd190e07e1d73 && \
+    git checkout 3f4b973761c58183cc39ae8d96bdd190e07e1d73 && \
     meson setup build --prefix=/usr -Dsystemd=enabled && \
     ninja -C build && \
     ninja -C build install && \
@@ -298,7 +299,8 @@ RUN if [ "$GAMING" = "true" ]; then \
             gamemode gamescope mangohud goverlay \
             vulkan-tools vulkan-loader mesa-vulkan-drivers \
             mesa-dri-drivers libva libva-utils mesa-va-drivers \
-            steam-devices || true; \
+            steam-devices \
+            mesa-vdpau-drivers-freeworld || true; \
         dnf install -y --skip-broken wine winetricks || true; \
         dnf install -y --skip-broken lutris || true; \
         dnf install -y --skip-broken akmod-nvidia xorg-x11-drv-nvidia-cuda || true; \

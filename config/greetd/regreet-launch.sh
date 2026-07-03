@@ -76,10 +76,7 @@ weston --version 2>&1 || echo "weston not found"
 echo "=== Starting weston ==="
 weston --backend=drm --shell=kiosk \
     --log=/var/lib/greeter/weston.log \
-    --modules=shared_egl_vendor \
-    --fronted=headless \
-    --idle-time=0 \
-    2>&1 &
+    &
 
 WESTON_PID=$!
 echo "weston started with PID $WESTON_PID"

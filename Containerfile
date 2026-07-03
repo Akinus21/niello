@@ -202,6 +202,8 @@ RUN printf 'window { background: #212337; }\n' \
     'button.suggested-action, button#login-button { background: #04d1f9; color: #212337; font-weight: 600; border-radius: 8px; border: none; padding: 10px 24px; min-height: 20px; }\n' \
     > /etc/greetd/regreet.css
 
+RUN printf '[theme]\nname = "Eldritch"\ncss = "/etc/greetd/regreet.css"\n\n[background]\ncolor = "#212337"\n' > /etc/greetd/regreet.toml
+
 COPY config/greetd/regreet-launch.sh /etc/greetd/regreet-launch.sh
 RUN chmod +x /etc/greetd/regreet-launch.sh
 

@@ -99,7 +99,7 @@ cat /var/lib/greeter/weston.log 2>/dev/null || echo "No weston log"
 # Run regreet
 echo "=== Starting regreet ==="
 echo "WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-unset}, using wayland-1"
-WAYLAND_DISPLAY=wayland-1 regreet -c /etc/greetd/regreet.css 2>&1
+WAYLAND_DISPLAY=wayland-1 regreet -c /etc/greetd/regreet.toml 2>&1
 REGREET_EXIT=$?
 
 echo "regreet exited with code $REGREET_EXIT"

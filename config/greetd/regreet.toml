@@ -1,0 +1,8 @@
+# regreet configuration
+[theme]
+name = "Eldritch"
+css = "/etc/greetd/regreet.css"
+
+[background]
+# Optional: solid color or image
+color = "#212337"

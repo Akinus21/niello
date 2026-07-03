@@ -255,7 +255,10 @@ RUN printf '[appearance]\nscheme = "Eldritch"\n\n[output]\nscale = 1.5\n' \
 RUN printf 'session required pam_systemd.so\n' >> /etc/pam.d/greetd
 
 # greetd config: use noctalia-greeter-session wrapper with correct state dir
-RUN printf '[terminal]\nvt = 1\n\n[default_session]\ncommand = "bash -c 'NOCTALIA_GREETER_STATE_DIR=/var/lib/greeter/noctalia-greeter /usr/bin/noctalia-greeter-session'"\nuser = "greeter"\n' > /etc/greetd/config.toml
+RUN printf '[terminal]\nvt = 1\n\n[default_session]\ncommand = "/bin/bash /etc/greetd/noctalia-greeter-launch.sh"\nuser = "greeter"\n' > /etc/greetd/config.toml
+
+COPY config/greetd/noctalia-greeter-launch.sh /etc/greetd/noctalia-greeter-launch.sh
+RUN chmod +x /etc/greetd/noctalia-greeter-launch.sh
 
 RUN systemctl disable gdm 2>/dev/null || true
 RUN systemctl enable greetd 2>/dev/null || true

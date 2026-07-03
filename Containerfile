@@ -4,7 +4,7 @@ FROM quay.io/fedora/fedora-bootc:44
 RUN dnf install -y \
     https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
     https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm \
-    && dnf install -y \
+    && dnf install -y --skip-broken \
     mesa-va-drivers-freeworld \
     mesa-vdpau-drivers-freeworld \
     ffmpeg \

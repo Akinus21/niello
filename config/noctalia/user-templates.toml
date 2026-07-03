@@ -1,8 +1,3 @@
-# Niello ReGreet color sync
-# Renders the CSS template and copies it to greetd's config dir.
-# The post_hook makes the file world-readable so the greeter user can read it.
-# Uses pkexec via the niello-sync-greeter-css systemd service for immutable-OS safety.
-[templates.regreet]
-input_path  = "~/.config/noctalia/templates/regreet.css.tpl"
-output_path = "~/.cache/noctalia/regreet.css"
-post_hook   = "systemctl --user start niello-sync-greeter-css.service"
+# Niello user templates
+# Templates synced from skel to user home directory.
+# noctalia-greeter uses greeter.toml config instead of CSS templates.

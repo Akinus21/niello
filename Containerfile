@@ -1,4 +1,4 @@
-FROM quay.io/fedora/fedora-bootc:43
+FROM quay.io/fedora/fedora-bootc:44
 
 # ── RPMFusion + Full Codec Stack (uBlue hardware enablement) ───
 RUN dnf install -y \
@@ -164,55 +164,87 @@ COPY config/systemd/brew-update.service /etc/systemd/system/brew-update.service
 COPY config/systemd/brew-update.timer  /etc/systemd/system/brew-update.timer
 RUN systemctl enable brew-update.timer
 
-# ── weston + regreet greeter ──────────────────────────────────
-RUN dnf install -y --skip-broken weston
-
-RUN dnf install -y --skip-broken wtype || true
-
+# ── Build deps: noctalia-greeter (meson + ninja) ───────────────────────────
 RUN dnf install -y --skip-broken \
-    rust cargo gtk4-devel libadwaita-devel \
-    openssl-devel at-spi2-core-devel && \
-    mkdir -p /tmp/regreet-src /tmp/cargo-home && \
-    curl -fsSL https://github.com/rharish101/ReGreet/archive/refs/tags/0.3.0.tar.gz \
-        -o /tmp/regreet.tar.gz && \
-    tar xzf /tmp/regreet.tar.gz -C /tmp/regreet-src --strip-components=1 && \
-    CARGO_HOME=/tmp/cargo-home HOME=/tmp cargo build --release \
-        -j 4 \
-        --manifest-path /tmp/regreet-src/Cargo.toml && \
-    install -Dm755 /tmp/regreet-src/target/release/regreet /usr/local/bin/regreet && \
-    rm -rf /tmp/regreet-src /tmp/cargo-home
+    meson \
+    ninja-build \
+    gcc-c++ \
+    wlroots-devel \
+    libinput-devel \
+    libEGL-devel \
+    mesa-libGLES-devel \
+    freetype-devel \
+    fontconfig-devel \
+    cairo-devel \
+    pango-devel \
+    harfbuzz-devel \
+    libxkbcommon-devel \
+    glib2-devel \
+    libwebp-devel \
+    librsvg2-devel \
+    greetd \
+    dbus-daemon \
+    polkit \
+    pkgconf-pkg-config \
+    wayland-devel \
+    wayland-protocols-devel \
+    just
+
+# ── Clone + build noctalia-greeter ───────────────────────────────────────
+RUN git clone --depth=1 \
+    --branch=3f4b973761c58183cc39ae8d96bdd190e07e1d73 \
+    https://github.com/noctalia-dev/noctalia-greeter.git \
+    /tmp/noctalia-greeter && \
+    cd /tmp/noctalia-greeter && \
+    meson setup build --prefix=/usr -Dsystemd=enabled && \
+    ninja -C build && \
+    ninja -C build install && \
+    rm -rf /tmp/noctalia-greeter
+
+# ── Runtime deps: noctalia-greeter ────────────────────────────────────────
+RUN dnf install -y --skip-broken \
+    wayland \
+    mesa-libGLES \
+    libxkbcommon \
+    cairo \
+    pango \
+    harfbuzz \
+    libwebp \
+    librsvg2 \
+    glib2 \
+    dbus \
+    polkit \
+    greetd
 
 # ── Noctalia config ──────────────────────────────────────────
 RUN mkdir -p /etc/skel/.config/noctalia /etc/skel/.cache/noctalia
 COPY config/noctalia/ /etc/skel/.config/noctalia/
 
-# ── greetd + regreet setup ────────────────────────────────────
-COPY config/systemd/niello-sync-greeter-css.service /etc/systemd/system/niello-sync-greeter-css.service
-RUN systemctl enable niello-sync-greeter-css 2>/dev/null || true
-
+# ── greetd + noctalia-greeter setup ──────────────────────────────────────
 RUN dnf install -y --skip-broken greetd || true && \
     mkdir -p /etc/greetd
 
-RUN printf 'window { background: #212337; }\n' \
-    'box.login-box, box#main-box { background: rgba(50,52,73,0.72); border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); padding: 40px 48px; margin: auto; min-width: 380px; backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }\n' \
-    'label { color: #ebfafa; font-size: 13px; }\n' \
-    'label.time, label.date { color: #ebfafa; font-size: 48px; font-weight: 300; margin-bottom: 4px; }\n' \
-    'entry { background: rgba(112,129,208,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #ebfafa; padding: 10px 14px; font-size: 14px; caret-color: #04d1f9; min-height: 20px; }\n' \
-    'entry:focus { border-color: #04d1f9; background: rgba(112,129,208,0.4); box-shadow: 0 0 0 2px rgba(4,209,249,0.25); }\n' \
-    'button.suggested-action, button#login-button { background: #04d1f9; color: #212337; font-weight: 600; border-radius: 8px; border: none; padding: 10px 24px; min-height: 20px; }\n' \
-    > /etc/greetd/regreet.css
-
-RUN printf '[theme]\nname = "Eldritch"\ncss = "/etc/greetd/regreet.css"\n\n[background]\ncolor = "#212337"\n' > /etc/greetd/regreet.toml
-
-COPY config/greetd/regreet-launch.sh /etc/greetd/regreet-launch.sh
-RUN chmod +x /etc/greetd/regreet-launch.sh
-
-RUN printf '[terminal]\nvt = 1\n\n[default_session]\ncommand = "/bin/bash /etc/greetd/regreet-launch.sh"\nuser = "greeter"\n' > /etc/greetd/config.toml
-
+# Create greeter user dirs
 RUN printf 'u greeter - "Greeter" /var/lib/greeter /usr/bin/nologin\nm greeter video\nm greeter input\nm greeter render\n' \
         > /usr/lib/sysusers.d/greeter.conf && \
     printf 'd /var/lib/greeter 0750 greeter greeter\n' \
         > /usr/lib/tmpfiles.d/greeter.conf
+
+# Create /var/lib/noctalia-greeter/
+RUN mkdir -p /var/lib/noctalia-greeter && \
+    chown greeter:greeter /var/lib/noctalia-greeter && \
+    chmod 0755 /var/lib/noctalia-greeter
+
+# greeter.toml with Eldritch + HiDPI
+RUN printf '[appearance]\nscheme = "Eldritch"\n\n[output]\nscale = 1.5\n' \
+    > /var/lib/noctalia-greeter/greeter.toml && \
+    chown greeter:greeter /var/lib/noctalia-greeter/greeter.toml
+
+# PAM for greetd
+RUN printf 'session required pam_systemd.so\n' >> /etc/pam.d/greetd
+
+# greetd config: use noctalia-greeter-session wrapper
+RUN printf '[terminal]\nvt = 1\n\n[default_session]\ncommand = "/usr/bin/noctalia-greeter-session"\nuser = "greeter"\n' > /etc/greetd/config.toml
 
 RUN systemctl disable gdm 2>/dev/null || true
 RUN systemctl enable greetd 2>/dev/null || true
@@ -258,10 +290,6 @@ COPY config/niri/ /etc/skel/.config/niri/
 RUN mkdir -p /etc/skel/.config/gtk-3.0 /etc/skel/.config/gtk-4.0
 COPY config/gtk-3.0/settings.ini /etc/skel/.config/gtk-3.0/settings.ini
 COPY config/gtk-4.0/settings.ini /etc/skel/.config/gtk-4.0/settings.ini
-
-# ── polkit + sudoers ─────────────────────────────────────────
-COPY config/polkit-1/actions/com.niello.sync-greeter-css.policy /usr/share/polkit-1/actions/com.niello.sync-greeter-css.policy
-COPY config/sudoers.d/noctalia-greeter /etc/sudoers.d/noctalia-greeter
 
 # ── Gaming (conditional) ─────────────────────────────────────
 ARG GAMING=false

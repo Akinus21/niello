@@ -6,7 +6,6 @@ RUN dnf install -y \
     https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm \
     && dnf install -y --skip-broken \
     mesa-va-drivers-freeworld \
-    mesa-vdpau-drivers-freeworld \
     ffmpeg \
     pipewire-codec-aptx \
     && dnf clean all

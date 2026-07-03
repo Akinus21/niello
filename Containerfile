@@ -1,4 +1,4 @@
-FROM quay.io/fedora/fedora-bootc:42
+FROM quay.io/fedora/fedora-bootc:43
 
 # ── RPMFusion + Full Codec Stack (uBlue hardware enablement) ───
 RUN dnf install -y \

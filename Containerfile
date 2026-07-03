@@ -196,7 +196,7 @@ RUN git clone --depth=1 \
     cd /tmp/noctalia-greeter && \
     git fetch --depth=1 origin 3f4b973761c58183cc39ae8d96bdd190e07e1d73 && \
     git checkout 3f4b973761c58183cc39ae8d96bdd190e07e1d73 && \
-    meson setup build --prefix=/usr -Dsystemd=enabled && \
+    meson setup build --prefix=/usr && \
     ninja -C build && \
     ninja -C build install && \
     rm -rf /tmp/noctalia-greeter

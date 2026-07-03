@@ -203,7 +203,6 @@ RUN git clone --depth=1 \
 
 # ── Runtime deps: noctalia-greeter ────────────────────────────────────────
 RUN dnf install -y --skip-broken \
-    wayland \
     mesa-libGLES \
     libxkbcommon \
     cairo \
@@ -211,10 +210,7 @@ RUN dnf install -y --skip-broken \
     harfbuzz \
     libwebp \
     librsvg2 \
-    glib2 \
-    dbus \
-    polkit \
-    greetd
+    greetd || true
 
 # ── Noctalia config ──────────────────────────────────────────
 RUN mkdir -p /etc/skel/.config/noctalia /etc/skel/.cache/noctalia

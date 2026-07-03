@@ -228,13 +228,13 @@ RUN printf 'u greeter - "Greeter" /var/lib/greeter /usr/bin/nologin\nm greeter v
 
 # Create /var/lib/noctalia-greeter/
 RUN mkdir -p /var/lib/noctalia-greeter && \
-    chown greeter:greeter /var/lib/noctalia-greeter && \
+    chown 955:955 /var/lib/noctalia-greeter && \
     chmod 0755 /var/lib/noctalia-greeter
 
 # greeter.toml with Eldritch + HiDPI
 RUN printf '[appearance]\nscheme = "Eldritch"\n\n[output]\nscale = 1.5\n' \
     > /var/lib/noctalia-greeter/greeter.toml && \
-    chown greeter:greeter /var/lib/noctalia-greeter/greeter.toml
+    chown 955:955 /var/lib/noctalia-greeter/greeter.toml
 
 # PAM for greetd
 RUN printf 'session required pam_systemd.so\n' >> /etc/pam.d/greetd

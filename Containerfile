@@ -226,21 +226,21 @@ RUN printf 'u greeter - "Greeter" /var/lib/greeter /usr/bin/nologin\nm greeter v
     printf 'd /var/lib/greeter 0750 greeter greeter\n' \
         > /usr/lib/tmpfiles.d/greeter.conf
 
-# Create /var/lib/noctalia-greeter/
-RUN mkdir -p /var/lib/noctalia-greeter && \
-    chown 955:955 /var/lib/noctalia-greeter && \
-    chmod 0755 /var/lib/noctalia-greeter
+# Create /var/lib/greeter/noctalia-greeter/ (owned by greeter user)
+RUN mkdir -p /var/lib/greeter/noctalia-greeter && \
+    chown 955:955 /var/lib/greeter/noctalia-greeter && \
+    chmod 0755 /var/lib/greeter/noctalia-greeter
 
-# greeter.toml with Eldritch + HiDPI
+# greeter.toml with Eldritch + HiDPI (in greeter user's dir)
 RUN printf '[appearance]\nscheme = "Eldritch"\n\n[output]\nscale = 1.5\n' \
-    > /var/lib/noctalia-greeter/greeter.toml && \
-    chown 955:955 /var/lib/noctalia-greeter/greeter.toml
+    > /var/lib/greeter/noctalia-greeter/greeter.toml && \
+    chown 955:955 /var/lib/greeter/noctalia-greeter/greeter.toml
 
 # PAM for greetd
 RUN printf 'session required pam_systemd.so\n' >> /etc/pam.d/greetd
 
-# greetd config: use noctalia-greeter-session wrapper
-RUN printf '[terminal]\nvt = 1\n\n[default_session]\ncommand = "/usr/bin/noctalia-greeter-session"\nuser = "greeter"\n' > /etc/greetd/config.toml
+# greetd config: use noctalia-greeter-session wrapper with correct state dir
+RUN printf '[terminal]\nvt = 1\n\n[default_session]\ncommand = "NOCTALIA_GREETER_STATE_DIR=/var/lib/greeter/noctalia-greeter /usr/bin/noctalia-greeter-session"\nuser = "greeter"\n' > /etc/greetd/config.toml
 
 RUN systemctl disable gdm 2>/dev/null || true
 RUN systemctl enable greetd 2>/dev/null || true

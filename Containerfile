@@ -204,21 +204,11 @@ RUN dnf install -y --skip-broken \
     wayland-protocols-devel \
     just
 
-# ── Clone + build noctalia-greeter ───────────────────────────────────────
-# Ensure fresh clone every time to avoid stale source
-RUN rm -rf /tmp/noctalia-greeter /tmp/purple_haze.txt /tmp/insert_palette.py 2>/dev/null || true
-
-COPY config/noctalia-greeter/purple_haze.txt /tmp/purple_haze.txt
+# ── Clone + build noctalia-greeter (Eldritch theme) ────────────────────────
 RUN git clone --depth=1 \
     https://github.com/noctalia-dev/noctalia-greeter.git \
     /tmp/noctalia-greeter && \
     cd /tmp/noctalia-greeter && \
-    git fetch --depth=1 origin 3f4b973761c58183cc39ae8d96bdd190e07e1d73 && \
-    git checkout 3f4b973761c58183cc39ae8d96bdd190e07e1d73
-
-RUN cd /tmp/noctalia-greeter && \
-    awk '/\.name = "Tokyo-Night"/ && !seen { seen=1; while((getline line < "/tmp/purple_haze.txt")>0) print line } { print }' src/theme/builtin_palettes.cpp > src/theme/builtin_palettes.cpp.new && \
-    mv src/theme/builtin_palettes.cpp.new src/theme/builtin_palettes.cpp && \
     meson setup build --prefix=/usr && \
     ninja -C build && \
     ninja -C build install && \
@@ -254,8 +244,8 @@ RUN mkdir -p /var/lib/greeter/noctalia-greeter && \
     chown 955:955 /var/lib/greeter/noctalia-greeter && \
     chmod 0755 /var/lib/greeter/noctalia-greeter
 
-# greeter.toml with Purple Haze + HiDPI (in greeter user's dir)
-RUN printf '[appearance]\nscheme = "Purple Haze"\n\n[output]\nscale = 1.5\n' > /var/lib/greeter/noctalia-greeter/greeter.toml
+# greeter.toml with Eldritch + HiDPI (in greeter user's dir)
+RUN printf '[appearance]\n\n[output]\nscale = 1.5\n' > /var/lib/greeter/noctalia-greeter/greeter.toml
 
 # PAM for greetd
 RUN printf 'session required pam_systemd.so\n' >> /etc/pam.d/greetd
@@ -339,5 +329,4 @@ RUN if [ "$GAMING" = "true" ]; then \
     fi
 
 # ── Cleanup ─────────────────────────────────────────────────
-RUN dnf clean all && rm -rf /var/cache/dnf/* && \
-    rm -f /tmp/purple_haze.txt
+RUN dnf clean all && rm -rf /var/cache/dnf/*

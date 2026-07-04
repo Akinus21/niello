@@ -68,6 +68,9 @@ RUN dnf install -y flatpak
 COPY config/systemd/niello-flatpak-setup.service /etc/systemd/system/niello-flatpak-setup.service
 RUN systemctl enable niello-flatpak-setup 2>/dev/null || true
 
+COPY config/systemd/niello-networking.service /etc/systemd/system/niello-networking.service
+RUN systemctl enable niello-networking 2>/dev/null || true
+
 # ══════════════════════════════════════════════════════════════
 # FILE MANAGER — keyboard-driven, Rust, fits ecosystem until
 # Corten's frontend (Corten Patina) exists
@@ -333,6 +336,9 @@ RUN mkdir -p /usr/local/bin && \
 RUN echo '[[ -x /usr/local/bin/niello-init ]] && /usr/local/bin/niello-init' >> /etc/zshenv
 RUN echo '[[ -x /usr/local/bin/niello-init ]] && /usr/local/bin/niello-init' >> /etc/skel/.zshrc
 
+COPY config/niello-init/set-defaults.sh /etc/profile.d/niello-defaults.sh
+RUN chmod +x /etc/profile.d/niello-defaults.sh
+
 RUN mkdir -p /etc/skel/.config/systemd/user /etc/skel/.local/bin
 COPY config/systemd/niello-init.service /etc/skel/.config/systemd/user/niello-init.service
 COPY config/systemd/ollama.service /etc/skel/.config/systemd/user/ollama.service
@@ -379,6 +385,9 @@ RUN if [ "$GAMING" = "true" ]; then \
             echo "Created NVIDIA Vulkan ICD for libnvidia-vulkan.so.${NVIDIA_VULKAN_VERSION}"; \
         fi; \
     fi
+
+# ── Copy udiskie user service ──────────────────────────────────────
+COPY config/systemd/user/niello-udiskie.service /etc/systemd/user/
 
 # ── Cleanup ─────────────────────────────────────────────────
 RUN dnf clean all && rm -rf /var/cache/dnf/*

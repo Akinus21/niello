@@ -201,6 +201,15 @@ main() {
     rm -f "$HOME/.config/systemd/user/noctalia-gtk.service"
     rm -f "$HOME/.config/systemd/user/noctalia-gtk.service.bak"
 
+    # Enable udiskie for USB automounting
+    if command -v udiskie &>/dev/null; then
+        mkdir -p "$HOME/.config/systemd/user"
+        ln -sf /etc/systemd/user/niello-udiskie.service \
+            "$HOME/.config/systemd/user/niello-udiskie.service" 2>/dev/null || true
+        systemctl --user daemon-reload 2>/dev/null || true
+        systemctl --user enable --now niello-udiskie 2>/dev/null || true
+    fi
+
     # Cleanup: stray Noctalia colors at root level
     rm -f "$HOME/.config/noctalia/purple-haze.json"
     rm -f "$HOME/.config/noctalia/midnight-cherry.json"
@@ -419,6 +428,11 @@ IRONEOF
         mark_installed "flatpak-packages"
     else
         ok "Flatpak: packages already installed (use --force to reinstall)"
+    fi
+
+    # Set XDG default applications
+    if [[ -x /etc/profile.d/niello-defaults.sh ]]; then
+        bash /etc/profile.d/niello-defaults.sh
     fi
 
     # ── Bitwarden CLI (bw) ──────────────────────────────────────────────────

@@ -1,0 +1,11 @@
+[Unit]
+Description=Niello USB Automount (udiskie)
+After= graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/udiskie -N -n
+Restart=on-failure
+
+[Install]
+WantedBy=graphical-session.target

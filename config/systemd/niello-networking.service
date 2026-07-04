@@ -1,0 +1,33 @@
+[Unit]
+Description=Niello Networking & Bluetooth Setup
+After=network-pre.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c '
+    # Ensure NetworkManager is enabled and started
+    systemctl enable NetworkManager 2>/dev/null || true
+    systemctl start NetworkManager 2>/dev/null || true
+
+    # Wait for NetworkManager to be ready
+    sleep 2
+
+    # If we have a wired connection but no DHCP lease yet, try to get one
+    if ! nmcli -t -f STATE general 2>/dev/null | grep -q "connected"; then
+        nmcli device set eth0 autoconnect yes 2>/dev/null || true
+        nmcli device set eno1 autoconnect yes 2>/dev/null || true
+        nmcli device set enp0s3 autoconnect yes 2>/dev/null || true
+        nmcli networking on 2>/dev/null || true
+        # Give it time to acquire IP
+        sleep 3
+    fi
+
+    # Ensure bluetooth service is enabled
+    systemctl enable bluetooth 2>/dev/null || true
+    systemctl start bluetooth 2>/dev/null || true
+'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

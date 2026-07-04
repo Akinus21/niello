@@ -202,15 +202,18 @@ RUN dnf install -y --skip-broken \
     pkgconf-pkg-config \
     wayland-devel \
     wayland-protocols-devel \
-    just
+    just \
+    patch
 
 # ── Clone + build noctalia-greeter ───────────────────────────────────────
+COPY config/noctalia-greeter/purple_haze.patch /tmp/patches/purple_haze.patch
 RUN git clone --depth=1 \
     https://github.com/noctalia-dev/noctalia-greeter.git \
     /tmp/noctalia-greeter && \
     cd /tmp/noctalia-greeter && \
     git fetch --depth=1 origin 3f4b973761c58183cc39ae8d96bdd190e07e1d73 && \
     git checkout 3f4b973761c58183cc39ae8d96bdd190e07e1d73 && \
+    patch -p1 < /tmp/patches/purple_haze.patch && \
     meson setup build --prefix=/usr && \
     ninja -C build && \
     ninja -C build install && \
@@ -246,9 +249,9 @@ RUN mkdir -p /var/lib/greeter/noctalia-greeter && \
     chown 955:955 /var/lib/greeter/noctalia-greeter && \
     chmod 0755 /var/lib/greeter/noctalia-greeter
 
-# greeter.toml with Eldritch + HiDPI (in greeter user's dir)
-RUN printf '[appearance]\nscheme = "Eldritch"\n\n[output]\nscale = 1.5\n' \
-    > /var/lib/greeter/noctalia-greeter/greeter.toml && \
+# greeter.toml with Purple Haze + HiDPI (in greeter user's dir)
+RUN printf '[appearance]\nscheme = "Purple Haze"\n\n[output]\nscale = 1.5\n' \
+    > /var/lib/greeter/noctalia-greeter/greeter.toml
     chown 955:955 /var/lib/greeter/noctalia-greeter/greeter.toml
 
 # PAM for greetd

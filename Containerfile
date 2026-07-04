@@ -216,10 +216,9 @@ RUN git clone --depth=1 \
     git fetch --depth=1 origin 3f4b973761c58183cc39ae8d96bdd190e07e1d73 && \
     git checkout 3f4b973761c58183cc39ae8d96bdd190e07e1d73
 
-COPY config/noctalia-greeter/insert_palette.py /tmp/insert_palette.py
 RUN cd /tmp/noctalia-greeter && \
-    python3 /tmp/insert_palette.py && \
-    rm -f /tmp/insert_palette.py && \
+    awk '/\.name = "Tokyo-Night"/ && !seen { seen=1; while((getline line < "/tmp/purple_haze.txt")>0) print line } { print }' src/theme/builtin_palettes.cpp > src/theme/builtin_palettes.cpp.new && \
+    mv src/theme/builtin_palettes.cpp.new src/theme/builtin_palettes.cpp && \
     meson setup build --prefix=/usr && \
     ninja -C build && \
     ninja -C build install && \

@@ -2,6 +2,8 @@
 """Insert Purple Haze palette into builtin_palettes.cpp (idempotent)"""
 import sys
 
+# idempotent v2: check before insert
+
 palette_file = '/tmp/purple_haze.txt'
 source_file = '/tmp/noctalia-greeter/src/theme/builtin_palettes.cpp'
 tokyo_target = '.name = "Tokyo-Night"'

@@ -58,14 +58,13 @@ RUN dnf install -y \
     qemu-guest-agent \
     irqbalance
 
-# ── Direct firmware fetch for iwlwifi-so-a0-gf-a0 (newer Intel WiFi 7 —
-# Fedora's linux-firmware package frequently lags behind what this driver
-# requests; known issue for this chip family) ──────────────────────────
-RUN curl -fsSL -o /usr/lib/firmware/iwlwifi-so-a0-gf-a0-89.ucode \
-    "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/iwlwifi-so-a0-gf-a0-89.ucode" \
-    || echo "WARNING: direct fetch of iwlwifi-so-a0-gf-a0-89.ucode failed, wifi may not work"
+# ── Direct firmware fetch for iwlwifi-so-a0-gf-a0 (Intel Wi-Fi 7 BE200)
+# Files are in intel/iwlwifi/ subdirectory, not firmware root ───────────
+RUN mkdir -p /usr/lib/firmware/intel/iwlwifi && \
+    curl -fsSL -o /usr/lib/firmware/intel/iwlwifi/iwlwifi-so-a0-gf-a0-89.ucode \
+    "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/intel/iwlwifi/iwlwifi-so-a0-gf-a0-89.ucode"
 
-RUN test -f /usr/lib/firmware/iwlwifi-so-a0-gf-a0-89.ucode || \
+RUN test -f /usr/lib/firmware/intel/iwlwifi/iwlwifi-so-a0-gf-a0-89.ucode || \
     (echo "FATAL: iwlwifi firmware missing after fetch" && exit 1)
 
 # Ensure network kernel modules are loaded at boot

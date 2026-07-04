@@ -1,0 +1,16 @@
+[Unit]
+Description=Niello bootc upgrade check before session start
+After=NetworkManager.service
+Wants=NetworkManager.service
+Before=greetd.service
+DefaultDependencies=no
+ConditionPathExists=!/etc/niello-skip-boot-upgrade
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/niello-boot-upgrade.sh
+TimeoutStartSec=30
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

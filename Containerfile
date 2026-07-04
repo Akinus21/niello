@@ -223,10 +223,18 @@ RUN mkdir -p /etc/systemd/system/bootc-fetch-apply-updates.service.d && \
     printf '[Service]\nExecStart=\nExecStart=/usr/bin/bootc upgrade --quiet\n' \
     > /etc/systemd/system/bootc-fetch-apply-updates.service.d/stage-only.conf
 
-COPY config/systemd/bootc-nightly-reboot.service /etc/systemd/system/bootc-nightly-reboot.service
-COPY config/systemd/bootc-nightly-reboot.timer   /etc/systemd/system/bootc-nightly-reboot.timer
+# ══════════════════════════════════════════════════════════════
+# BOOT-TIME bootc UPGRADE CHECK — replaces nightly timer
+# ══════════════════════════════════════════════════════════════
+COPY config/systemd/niello-boot-upgrade.service /etc/systemd/system/niello-boot-upgrade.service
+COPY config/systemd/niello-boot-upgrade.sh /usr/local/bin/niello-boot-upgrade.sh
+RUN chmod +x /usr/local/bin/niello-boot-upgrade.sh && \
+    systemctl enable niello-boot-upgrade.service
 
-RUN systemctl enable bootc-nightly-reboot.timer
+# Force greetd to wait on our upgrade check via drop-in override
+RUN mkdir -p /etc/systemd/system/greetd.service.d && \
+    printf '[Unit]\nAfter=niello-boot-upgrade.service\nWants=niello-boot-upgrade.service\n' \
+    > /etc/systemd/system/greetd.service.d/10-niello-upgrade.conf
 
 # ── Homebrew Update Timer ─────────────────────────────────────
 COPY config/systemd/brew-update.service /etc/systemd/system/brew-update.service

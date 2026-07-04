@@ -23,10 +23,11 @@ jobs:
       packages: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          persist-credentials: false
+      - name: Check out repository
+        run: |
+          git clone --branch=${{ github.ref_name }} --depth=1 https://${{ secrets.FORGEJO_TOKEN }}@${{ github.server_url }}/${{ github.repository }}.git repo
+          cd repo
+          git reset --hard ${{ github.sha }}
 
       - name: Build and fix (OpenCode)
         env:
@@ -47,10 +48,11 @@ jobs:
       packages: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          persist-credentials: false
+      - name: Check out repository
+        run: |
+          git clone --branch=${{ github.ref_name }} --depth=1 https://${{ secrets.FORGEJO_TOKEN }}@${{ github.server_url }}/${{ github.repository }}.git repo
+          cd repo
+          git reset --hard ${{ github.sha }}
 
       - name: Build NVIDIA variant
         env:

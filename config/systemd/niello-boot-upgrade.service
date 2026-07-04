@@ -1,7 +1,6 @@
 [Unit]
 Description=Niello bootc upgrade check before session start
-After=NetworkManager.service
-Wants=NetworkManager.service
+After=niello-networking.service
 Before=greetd.service
 DefaultDependencies=no
 ConditionPathExists=!/etc/niello-skip-boot-upgrade

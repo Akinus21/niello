@@ -1,31 +1,27 @@
 [Unit]
 Description=Niello Networking & Bluetooth Setup
 After=network-pre.target
-Wants=network-online.target
+Before=network-online.target
+DefaultDependencies=no
 
 [Service]
 Type=oneshot
 ExecStart=/bin/bash -c '
-    # Ensure NetworkManager is enabled and started
-    systemctl enable NetworkManager 2>/dev/null || true
-    systemctl start NetworkManager 2>/dev/null || true
+set -euo pipefail
 
-    # Wait for NetworkManager to be ready
-    sleep 2
+# Ensure NetworkManager is enabled and started
+systemctl enable NetworkManager 2>/dev/null || true
+systemctl start NetworkManager 2>/dev/null || true
 
-    # If we have a wired connection but no DHCP lease yet, try to get one
-    if ! nmcli -t -f STATE general 2>/dev/null | grep -q "connected"; then
-        nmcli device set eth0 autoconnect yes 2>/dev/null || true
-        nmcli device set eno1 autoconnect yes 2>/dev/null || true
-        nmcli device set enp0s3 autoconnect yes 2>/dev/null || true
-        nmcli networking on 2>/dev/null || true
-        # Give it time to acquire IP
-        sleep 3
-    fi
+# Wait for NetworkManager to report full online state (not just started)
+# This brings up network-online.target for us
+nm-online -s --timeout=30 2>/dev/null || {
+    echo "niello-networking: nm-online timed out, continuing anyway"
+}
 
-    # Ensure bluetooth service is enabled
-    systemctl enable bluetooth 2>/dev/null || true
-    systemctl start bluetooth 2>/dev/null || true
+# Ensure bluetooth service is enabled and started
+systemctl enable bluetooth 2>/dev/null || true
+systemctl start bluetooth 2>/dev/null || true
 '
 RemainAfterExit=yes
 

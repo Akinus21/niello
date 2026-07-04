@@ -336,6 +336,9 @@ RUN mkdir -p /usr/local/bin && \
 RUN echo '[[ -x /usr/local/bin/niello-init ]] && /usr/local/bin/niello-init' >> /etc/zshenv
 RUN echo '[[ -x /usr/local/bin/niello-init ]] && /usr/local/bin/niello-init' >> /etc/skel/.zshrc
 
+COPY config/profile.d/PS1-fix.sh /etc/profile.d/PS1-fix.sh
+RUN chmod +x /etc/profile.d/PS1-fix.sh
+
 COPY config/niello-init/set-defaults.sh /etc/profile.d/niello-defaults.sh
 RUN chmod +x /etc/profile.d/niello-defaults.sh
 

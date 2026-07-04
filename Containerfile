@@ -213,23 +213,14 @@ RUN git clone --depth=1 \
     git fetch --depth=1 origin 3f4b973761c58183cc39ae8d96bdd190e07e1d73 && \
     git checkout 3f4b973761c58183cc39ae8d96bdd190e07e1d73
 
+COPY config/noctalia-greeter/insert_palette.py /tmp/insert_palette.py
 RUN cd /tmp/noctalia-greeter && \
-    python3 - <<'PYEOF'
-import sys
-with open('/tmp/purple_haze.txt', 'r') as f:
-    palette = f.read()
-with open('src/theme/builtin_palettes.cpp', 'r') as f:
-    content = f.read()
-content = content.replace('.name = "Tokyo-Night"', palette + '.name = "Tokyo-Night"')
-with open('src/theme/builtin_palettes.cpp', 'w') as f:
-    f.write(content)
-print("Purple Haze inserted")
-PYEOF
-
-RUN cd /tmp/noctalia-greeter && \
+    python3 /tmp/insert_palette.py && \
+    rm /tmp/insert_palette.py && \
     meson setup build --prefix=/usr && \
     ninja -C build && \
-    ninja -C build install
+    ninja -C build install && \
+    rm -rf /tmp/noctalia-greeter
 
 # ── Runtime deps: noctalia-greeter ────────────────────────────────────────
 RUN dnf install -y --skip-broken \
@@ -347,4 +338,4 @@ RUN if [ "$GAMING" = "true" ]; then \
 
 # ── Cleanup ─────────────────────────────────────────────────
 RUN dnf clean all && rm -rf /var/cache/dnf/* && \
-    rm -f /tmp/purple_haze.txt && rm -rf /tmp/noctalia-greeter
+    rm -f /tmp/purple_haze.txt

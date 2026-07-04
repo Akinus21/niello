@@ -2,6 +2,7 @@
 """Insert Purple Haze palette into builtin_palettes.cpp"""
 import sys
 
+# v3: ensure newline separator between Purple Haze and Tokyo-Night
 palette_file = '/tmp/purple_haze.txt'
 source_file = '/tmp/noctalia-greeter/src/theme/builtin_palettes.cpp'
 target = '.name = "Tokyo-Night"'

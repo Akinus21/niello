@@ -25,7 +25,10 @@ jobs:
     steps:
       - name: Check out repository
         run: |
-          git clone --branch=${{ github.ref_name }} --depth=1 ${{ secrets.FORGEJO_TOKEN }}@${{ github.server_url }}/${{ github.repository }}.git repo
+          SERVER="{{ github.server_url }}"
+          SERVER="${SERVER#https://}"
+          REPO="${{ github.repository }}"
+          git clone --branch=${{ github.ref_name }} --depth=1 "https://${{ secrets.FORGEJO_TOKEN }}@${SERVER}/${REPO}.git" repo
           cd repo
           git reset --hard ${{ github.sha }}
 
@@ -50,7 +53,10 @@ jobs:
     steps:
       - name: Check out repository
         run: |
-          git clone --branch=${{ github.ref_name }} --depth=1 ${{ secrets.FORGEJO_TOKEN }}@${{ github.server_url }}/${{ github.repository }}.git repo
+          SERVER="{{ github.server_url }}"
+          SERVER="${SERVER#https://}"
+          REPO="${{ github.repository }}"
+          git clone --branch=${{ github.ref_name }} --depth=1 "https://${{ secrets.FORGEJO_TOKEN }}@${SERVER}/${REPO}.git" repo
           cd repo
           git reset --hard ${{ github.sha }}
 

@@ -56,7 +56,7 @@ RUN dnf install -y \
     microcode_ctl \
     thermald \
     qemu-guest-agent \
-    irqbalance \
+    irqbalance
 
 # Ensure network kernel modules are loaded at boot
 RUN echo 'iwlwifi' >> /etc/modules-load.d/niello-networking.conf && \

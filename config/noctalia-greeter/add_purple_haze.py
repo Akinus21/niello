@@ -1,10 +1,27 @@
 #!/usr/bin/env python3
-"""Insert Purple Haze palette into builtin_palettes.cpp before the kPalettes array closer."""
+"""Insert Purple Haze palette into builtin_palettes.cpp before Tokyo-Night."""
 
 import sys
 
-PURPLE_HAZE_ENTRY = """
-    {
+def main():
+    filepath = "/tmp/noctalia-greeter/src/theme/builtin_palettes.cpp"
+
+    with open(filepath, "r") as f:
+        lines = f.readlines()
+
+    # Find the line containing ".name = "Tokyo-Night"" - that's the LAST palette entry
+    # Insert Purple Haze BEFORE this line
+    tokyo_line = None
+    for i, line in enumerate(lines):
+        if '.name = "Tokyo-Night"' in line:
+            tokyo_line = i
+            break
+
+    if tokyo_line is None:
+        sys.exit("Error: Could not find '.name = \"Tokyo-Night\"' in builtin_palettes.cpp")
+
+    # Build the insertion (with correct indentation: 4 spaces to match the rest)
+    entry = """    {
         .name = "Purple Haze",
         .dark =
             FixedPaletteMode{
@@ -115,25 +132,13 @@ PURPLE_HAZE_ENTRY = """
     },
 """
 
-
-def main():
-    filepath = "/tmp/noctalia-greeter/src/theme/builtin_palettes.cpp"
-
-    with open(filepath, "r") as f:
-        content = f.read()
-
-    # Find the last }; in the file - that's the kPalettes array closer
-    last_brace = content.rfind("};")
-    if last_brace == -1:
-        sys.exit("Error: Could not find closing }; in builtin_palettes.cpp")
-
-    # Insert Purple Haze before the last };
-    content = content[:last_brace] + PURPLE_HAZE_ENTRY + content[last_brace:]
+    # Insert before the Tokyo-Night line
+    lines.insert(tokyo_line, entry)
 
     with open(filepath, "w") as f:
-        f.write(content)
+        f.writelines(lines)
 
-    print(f"Successfully inserted Purple Haze palette into {filepath}")
+    print(f"Successfully inserted Purple Haze palette at line {tokyo_line}")
 
 
 if __name__ == "__main__":

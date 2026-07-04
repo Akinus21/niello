@@ -15,7 +15,7 @@ with open(source_file, 'r') as f:
 if target not in content:
     sys.exit(f"ERROR: Could not find '{target}' in builtin_palettes.cpp")
 
-content = content.replace(target, palette + target)
+content = content.replace(target, palette.rstrip('\n') + '\n' + target)
 
 with open(source_file, 'w') as f:
     f.write(content)

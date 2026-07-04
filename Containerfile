@@ -1,19 +1,7 @@
 FROM quay.io/fedora/fedora-bootc:44
 
-# ── Container Registry Policy (secure by default) ──────────────
-RUN printf '%s\n' \
-  '{"default":[{"type":"reject"}],' \
-  '"transports":{"docker-daemon":{"quay.io":[{"type":"insecureAcceptAnything"}],' \
-  '"registry.fedoraproject.org":[{"type":"insecureAcceptAnything"}],' \
-  '"download.rpmfusion.org":[{"type":"insecureAcceptAnything"}],' \
-  '"mirrors.rpmfusion.org":[{"type":"insecureAcceptAnything"}],' \
-  '"github.com":[{"type":"insecureAcceptAnything"}],' \
-  '"raw.githubusercontent.com":[{"type":"insecureAcceptAnything"}],' \
-  '"objects.githubusercontent.com":[{"type":"insecureAcceptAnything"}],' \
-  '"pkg.osdn.net":[{"type":"insecureAcceptAnything"}],' \
-  '"src.fedoraproject.org":[{"type":"insecureAcceptAnything"}]},' \
-  '"containers-storage":{"docker-daemon":[{"type":"insecureAcceptAnything"}]}}}' \
-  > /etc/containers/policy.json
+# ── Container Registry Policy (permissive for isolated build) ─
+RUN printf '{"default":[{"type":"insecureAcceptAnything"}]}\n' > /etc/containers/policy.json
 
 # ── RPMFusion + Full Codec Stack (uBlue hardware enablement) ───
 RUN dnf install -y \

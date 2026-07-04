@@ -23,13 +23,10 @@ jobs:
       packages: write
 
     steps:
-      - name: Check out repository
+      - name: Set up working directory
         run: |
-          SERVER="{{ github.server_url }}"
-          SERVER="${SERVER#https://}"
-          REPO="${{ github.repository }}"
-          git clone --branch=${{ github.ref_name }} --depth=1 "https://${{ secrets.FORGEJO_TOKEN }}@${SERVER}/${REPO}.git" repo
-          cd repo
+          cd /workspace/akinus/niello
+          git fetch origin
           git reset --hard ${{ github.sha }}
 
       - name: Build and fix (OpenCode)
@@ -51,13 +48,10 @@ jobs:
       packages: write
 
     steps:
-      - name: Check out repository
+      - name: Set up working directory
         run: |
-          SERVER="{{ github.server_url }}"
-          SERVER="${SERVER#https://}"
-          REPO="${{ github.repository }}"
-          git clone --branch=${{ github.ref_name }} --depth=1 "https://${{ secrets.FORGEJO_TOKEN }}@${SERVER}/${REPO}.git" repo
-          cd repo
+          cd /workspace/akinus/niello
+          git fetch origin
           git reset --hard ${{ github.sha }}
 
       - name: Build NVIDIA variant

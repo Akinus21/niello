@@ -205,6 +205,9 @@ RUN dnf install -y --skip-broken \
     just
 
 # ── Clone + build noctalia-greeter ───────────────────────────────────────
+# Ensure fresh clone every time to avoid stale source
+RUN rm -rf /tmp/noctalia-greeter /tmp/purple_haze.txt /tmp/insert_palette.py 2>/dev/null || true
+
 COPY config/noctalia-greeter/purple_haze.txt /tmp/purple_haze.txt
 RUN git clone --depth=1 \
     https://github.com/noctalia-dev/noctalia-greeter.git \
@@ -216,7 +219,7 @@ RUN git clone --depth=1 \
 COPY config/noctalia-greeter/insert_palette.py /tmp/insert_palette.py
 RUN cd /tmp/noctalia-greeter && \
     python3 /tmp/insert_palette.py && \
-    rm /tmp/insert_palette.py && \
+    rm -f /tmp/insert_palette.py && \
     meson setup build --prefix=/usr && \
     ninja -C build && \
     ninja -C build install && \

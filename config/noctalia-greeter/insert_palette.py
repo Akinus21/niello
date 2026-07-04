@@ -1,24 +1,29 @@
 #!/usr/bin/env python3
-"""Insert Purple Haze palette into builtin_palettes.cpp"""
+"""Insert Purple Haze palette into builtin_palettes.cpp (idempotent)"""
 import sys
 
-# v3: ensure newline separator between Purple Haze and Tokyo-Night
 palette_file = '/tmp/purple_haze.txt'
 source_file = '/tmp/noctalia-greeter/src/theme/builtin_palettes.cpp'
-target = '.name = "Tokyo-Night"'
-
-with open(palette_file, 'r') as f:
-    palette = f.read()
+tokyo_target = '.name = "Tokyo-Night"'
 
 with open(source_file, 'r') as f:
     content = f.read()
 
-if target not in content:
-    sys.exit(f"ERROR: Could not find '{target}' in builtin_palettes.cpp")
+# Idempotency check - don't insert if Purple Haze already exists
+if '.name = "Purple Haze"' in content:
+    print("Purple Haze already present, skipping insertion")
+else:
+    with open(palette_file, 'r') as f:
+        palette = f.read()
 
-content = content.replace(target, palette.rstrip('\n') + '\n' + target)
+    if tokyo_target not in content:
+        sys.exit(f"ERROR: Could not find '{tokyo_target}' in builtin_palettes.cpp")
 
-with open(source_file, 'w') as f:
-    f.write(content)
+    # Strip any trailing newline from palette so we control spacing
+    palette = palette.rstrip('\n')
+    content = content.replace(tokyo_target, palette + '\n' + tokyo_target)
 
-print(f"Successfully inserted Purple Haze palette")
+    with open(source_file, 'w') as f:
+        f.write(content)
+
+    print("Successfully inserted Purple Haze palette")

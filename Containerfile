@@ -213,7 +213,8 @@ RUN git clone --depth=1 \
     git checkout 3f4b973761c58183cc39ae8d96bdd190e07e1d73
 
 COPY config/noctalia-greeter/add_purple_haze.py /tmp/add_purple_haze.py
-RUN python3 /tmp/add_purple_haze.py && \
+RUN cd /tmp/noctalia-greeter && \
+    python3 /tmp/add_purple_haze.py && \
     meson setup build --prefix=/usr && \
     ninja -C build && \
     ninja -C build install && \

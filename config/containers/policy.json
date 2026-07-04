@@ -1,0 +1,16 @@
+{
+    "default": [{"type": "reject"}],
+    "transports": {
+        "docker": {
+            "quay.io": [{"type": "insecureAcceptAnything"}],
+            "registry.fedoraproject.org": [{"type": "insecureAcceptAnything"}],
+            "docker.io": [{"type": "insecureAcceptAnything"}],
+            "ghcr.io": [{"type": "insecureAcceptAnything"}],
+            "registry.access.redhat.com": [{"type": "insecureAcceptAnything"}],
+            "registry.redhat.io": [{"type": "insecureAcceptAnything"}]
+        },
+        "containers-storage": {
+            "": [{"type": "insecureAcceptAnything"}]
+        }
+    }
+}

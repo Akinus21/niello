@@ -1,7 +1,7 @@
 FROM quay.io/fedora/fedora-bootc:44
 
-# ── Container Registry Policy (permissive for isolated build) ─
-RUN printf '{"default":[{"type":"insecureAcceptAnything"}]}\n' > /etc/containers/policy.json
+# ── Container Registry Policy ─────────────────────────────────
+COPY config/containers/policy.json /etc/containers/policy.json
 
 # ── RPMFusion + Full Codec Stack (uBlue hardware enablement) ───
 RUN dnf install -y \
@@ -39,14 +39,78 @@ RUN dnf install -y \
     pipewire \
     wireplumber \
     polkit \
-    network-manager-applet \
     zsh \
     git \
     just \
-    waybar \
     fuzzel \
     xdg-user-dirs \
     xdg-utils
+
+# ══════════════════════════════════════════════════════════════
+# NETWORKING + BLUETOOTH — Noctalia is UI-only, needs real daemons
+# ══════════════════════════════════════════════════════════════
+RUN dnf install -y \
+    NetworkManager \
+    bluez
+
+# ══════════════════════════════════════════════════════════════
+# XDG DESKTOP PORTAL — required for Flatpak sandboxing, screen share
+# ══════════════════════════════════════════════════════════════
+RUN dnf install -y \
+    xdg-desktop-portal \
+    xdg-desktop-portal-wlr
+
+# ══════════════════════════════════════════════════════════════
+# FLATPAK — runtime + Flathub remote
+# ══════════════════════════════════════════════════════════════
+RUN dnf install -y flatpak
+
+COPY config/systemd/niello-flatpak-setup.service /etc/systemd/system/niello-flatpak-setup.service
+RUN systemctl enable niello-flatpak-setup 2>/dev/null || true
+
+# ══════════════════════════════════════════════════════════════
+# FILE MANAGER — keyboard-driven, Rust, fits ecosystem until
+# Corten's frontend (Corten Patina) exists
+# ══════════════════════════════════════════════════════════════
+RUN dnf install -y yazi
+
+# ══════════════════════════════════════════════════════════════
+# BACKUP BROWSER — until Iron is complete
+# ══════════════════════════════════════════════════════════════
+RUN dnf install -y qutebrowser
+# qutebrowser: vim-keybind, QtWebEngine-based. Alternative: Nyxt (Lisp/keyboard-driven,
+# already configured with Noctalia theming + Linkding + 1Password CLI per prior work)
+
+# ══════════════════════════════════════════════════════════════
+# SCREENSHOT / CLIPBOARD / IDLE / LOCK
+# ══════════════════════════════════════════════════════════════
+RUN dnf install -y \
+    grim \
+    slurp \
+    cliphist \
+    swayidle \
+    swaylock
+
+# ══════════════════════════════════════════════════════════════
+# USB AUTOMOUNT / IMAGE VIEWER
+# ══════════════════════════════════════════════════════════════
+RUN dnf install -y \
+    udiskie \
+    imv
+
+# ══════════════════════════════════════════════════════════════
+# FONTS — Nerd Font for Noctalia/Waybar icon glyphs
+# ══════════════════════════════════════════════════════════════
+RUN dnf install -y --skip-broken \
+    google-noto-fonts-common \
+    google-noto-sans-fonts
+
+RUN mkdir -p /usr/share/fonts/nerd-fonts && \
+    curl -fsSL -o /tmp/jbm.zip \
+    https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip && \
+    unzip -o /tmp/jbm.zip -d /usr/share/fonts/nerd-fonts && \
+    rm /tmp/jbm.zip && \
+    fc-cache -f
 
 # ── CAC Smart Card Support ───────────────────────────────────
 RUN dnf install -y --skip-broken \

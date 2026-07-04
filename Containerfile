@@ -52,7 +52,11 @@ RUN dnf install -y \
 RUN dnf install -y \
     NetworkManager \
     bluez \
-    linux-firmware
+    linux-firmware \
+    microcode_ctl \
+    thermald \
+    qemu-guest-agent \
+    irqbalance \
 
 # Ensure network kernel modules are loaded at boot
 RUN echo 'iwlwifi' >> /etc/modules-load.d/niello-networking.conf && \

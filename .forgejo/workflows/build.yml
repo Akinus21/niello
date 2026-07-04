@@ -39,7 +39,7 @@ jobs:
           IMAGE_REGISTRY: ghcr.io/akinus21
           IMAGE_NAME: niello
         run: |
-          opencode run --non-interactive "Build the Containerfile in this repository. If the build fails, analyze the error and fix any files needed (Containerfile, configs, scripts, etc.) to resolve it. Iterate until the build succeeds. When the build succeeds: 1) tag and push the image to $IMAGE_REGISTRY/$IMAGE_NAME:latest, 2) auto-merge the fix into main, 3) delete the fix branch."
+          opencode run "Build the Containerfile in this repository. If the build fails, analyze the error and fix any files needed (Containerfile, configs, scripts, etc.) to resolve it. Iterate until the build succeeds. When the build succeeds: 1) tag and push the image to $IMAGE_REGISTRY/$IMAGE_NAME:latest, 2) auto-merge the fix into main, 3) delete the fix branch."
 
   build_and_fix_nvidia:
     name: Build NVIDIA variant with self-healing loop
@@ -68,4 +68,4 @@ jobs:
           IMAGE_NAME: niello
           GAMING: true
         run: |
-          opencode run --non-interactive "Build the Containerfile in this repository with GAMING=true. If the build fails, analyze the error and fix any files needed to resolve it. Iterate until the build succeeds. When the build succeeds: 1) tag and push the image to $IMAGE_REGISTRY/$IMAGE_NAME:nvidia, 2) auto-merge the fix into main, 3) delete the fix branch."
+          opencode run "Build the Containerfile in this repository with GAMING=true. If the build fails, analyze the error and fix any files needed to resolve it. Iterate until the build succeeds. When the build succeeds: 1) tag and push the image to $IMAGE_REGISTRY/$IMAGE_NAME:nvidia, 2) auto-merge the fix into main, 3) delete the fix branch."

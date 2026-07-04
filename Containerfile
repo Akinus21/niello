@@ -58,6 +58,15 @@ RUN dnf install -y \
     qemu-guest-agent \
     irqbalance
 
+# ── Intel WiFi firmware for AX201 (iwlwifi-so-a0-gf-a0-89.ucode) ──
+# Some Fedora releases split Intel WiFi firmware into a separate package
+# or have renamed the firmware file. Ensure it's present.
+RUN dnf install -y intel-wifi-firmware 2>/dev/null || true && \
+    if [ ! -f /lib/firmware/iwlwifi-so-a0-gf-a0-89.ucode ]; then \
+        echo "Warning: iwlwifi-so-a0-gf-a0-89.ucode not found in /lib/firmware/"; \
+        ls -la /lib/firmware/iwlwifi-*.ucode 2>/dev/null || echo "No iwlifi firmware found"; \
+    fi
+
 # Ensure network kernel modules are loaded at boot
 RUN echo 'iwlwifi' >> /etc/modules-load.d/niello-networking.conf && \
     echo 'iwlmvm' >> /etc/modules-load.d/niello-networking.conf && \

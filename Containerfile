@@ -3,7 +3,7 @@ FROM quay.io/fedora/fedora-bootc:44
 # ── Container Registry Policy (secure by default) ──────────────
 RUN printf '%s\n' \
   '{"default":[{"type":"reject"}],' \
-  '"transports":{"docker":{"quay.io":[{"type":"insecureAcceptAnything"}],' \
+  '"transports":{"docker-daemon":{"quay.io":[{"type":"insecureAcceptAnything"}],' \
   '"registry.fedoraproject.org":[{"type":"insecureAcceptAnything"}],' \
   '"download.rpmfusion.org":[{"type":"insecureAcceptAnything"}],' \
   '"mirrors.rpmfusion.org":[{"type":"insecureAcceptAnything"}],' \
@@ -12,7 +12,7 @@ RUN printf '%s\n' \
   '"objects.githubusercontent.com":[{"type":"insecureAcceptAnything"}],' \
   '"pkg.osdn.net":[{"type":"insecureAcceptAnything"}],' \
   '"src.fedoraproject.org":[{"type":"insecureAcceptAnything"}]},' \
-  '"containers-storage":{"docker":[{"type":"insecureAcceptAnything"}]}}}' \
+  '"containers-storage":{"docker-daemon":[{"type":"insecureAcceptAnything"}]}}}' \
   > /etc/containers/policy.json
 
 # ── RPMFusion + Full Codec Stack (uBlue hardware enablement) ───

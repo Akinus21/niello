@@ -360,9 +360,7 @@ RUN mkdir -p /var/lib/greeter/noctalia-greeter && \
     chmod 0755 /var/lib/greeter/noctalia-greeter
 
 # greeter.toml with Purple Haze + HiDPI (in greeter user's dir)
-RUN printf '[appearance]\nscheme = "Purple Haze"\n\n[output]\nscale = 1.5\n' \
-    > /var/lib/greeter/noctalia-greeter/greeter.toml
-    chown 955:955 /var/lib/greeter/noctalia-greeter/greeter.toml
+RUN printf '[appearance]\nscheme = "Purple Haze"\n\n[output]\nscale = 1.5\n' > /var/lib/greeter/noctalia-greeter/greeter.toml
 
 # PAM for greetd
 RUN printf 'session required pam_systemd.so\n' >> /etc/pam.d/greetd

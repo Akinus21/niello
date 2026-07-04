@@ -51,7 +51,13 @@ RUN dnf install -y \
 # ══════════════════════════════════════════════════════════════
 RUN dnf install -y \
     NetworkManager \
-    bluez
+    bluez \
+    linux-firmware
+
+# Ensure network kernel modules are loaded at boot
+RUN echo 'iwlwifi' >> /etc/modules-load.d/niello-networking.conf && \
+    echo 'iwlmvm' >> /etc/modules-load.d/niello-networking.conf && \
+    echo 'btusb' >> /etc/modules-load.d/niello-networking.conf
 
 # ══════════════════════════════════════════════════════════════
 # XDG DESKTOP PORTAL — required for Flatpak sandboxing, screen share

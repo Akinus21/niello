@@ -71,6 +71,11 @@ jobs:
           registries = []
           EOF
 
+      - name: Clean buildah storage before build
+        run: |
+          buildah rmi -a -f 2>/dev/null || true
+          buildah rm --all 2>/dev/null || true
+
       - name: Build with buildah
         uses: redhat-actions/buildah-build@v2
         with:
@@ -83,6 +88,7 @@ jobs:
           registry-password: ${{ secrets.GITHUB_TOKEN }}
           build-args: |
             BUILD_JOB=1
+          storage-driver: vfs
 
   # ── Build NVIDIA variant ─────────────────────────────────────────
   build-nvidia:
@@ -108,6 +114,11 @@ jobs:
           registries = []
           EOF
 
+      - name: Clean buildah storage before build
+        run: |
+          buildah rmi -a -f 2>/dev/null || true
+          buildah rm --all 2>/dev/null || true
+
       - name: Build NVIDIA variant with buildah
         uses: redhat-actions/buildah-build@v2
         with:
@@ -121,6 +132,7 @@ jobs:
           build-args: |
             BUILD_JOB=1
             GAMING=true
+          storage-driver: vfs
 
   # ── On success: push images ──────────────────────────────────────
   push:

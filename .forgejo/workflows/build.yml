@@ -73,8 +73,25 @@ jobs:
 
       - name: Clean buildah storage before build
         run: |
-          buildah rmi -a -f 2>/dev/null || true
+          echo "=== Disk space before cleanup ==="
+          df -h /var/lib/containers/storage
+
+          # Stop any running buildah containers
           buildah rm --all 2>/dev/null || true
+
+          # Remove all images
+          buildah rmi -a -f 2>/dev/null || true
+
+          # Deep clean storage directory
+          rm -rf /var/lib/containers/storage/tmp/* 2>/dev/null || true
+          rm -rf /var/lib/containers/storage/overlay/* 2>/dev/null || true
+          rm -rf /var/lib/containers/storage/vfs/* 2>/dev/null || true
+
+          # System prune
+          buildah system prune -a -f 2>/dev/null || true
+
+          echo "=== Disk space after cleanup ==="
+          df -h /var/lib/containers/storage
 
       - name: Build with buildah
         uses: redhat-actions/buildah-build@v2
@@ -89,6 +106,8 @@ jobs:
           build-args: |
             BUILD_JOB=1
           storage-driver: vfs
+          isolation: chroot
+          extra-args: --squash
 
   # ── Build NVIDIA variant ─────────────────────────────────────────
   build-nvidia:
@@ -116,8 +135,25 @@ jobs:
 
       - name: Clean buildah storage before build
         run: |
-          buildah rmi -a -f 2>/dev/null || true
+          echo "=== Disk space before cleanup ==="
+          df -h /var/lib/containers/storage
+
+          # Stop any running buildah containers
           buildah rm --all 2>/dev/null || true
+
+          # Remove all images
+          buildah rmi -a -f 2>/dev/null || true
+
+          # Deep clean storage directory
+          rm -rf /var/lib/containers/storage/tmp/* 2>/dev/null || true
+          rm -rf /var/lib/containers/storage/overlay/* 2>/dev/null || true
+          rm -rf /var/lib/containers/storage/vfs/* 2>/dev/null || true
+
+          # System prune
+          buildah system prune -a -f 2>/dev/null || true
+
+          echo "=== Disk space after cleanup ==="
+          df -h /var/lib/containers/storage
 
       - name: Build NVIDIA variant with buildah
         uses: redhat-actions/buildah-build@v2
@@ -133,6 +169,8 @@ jobs:
             BUILD_JOB=1
             GAMING=true
           storage-driver: vfs
+          isolation: chroot
+          extra-args: --squash
 
   # ── On success: push images ──────────────────────────────────────
   push:

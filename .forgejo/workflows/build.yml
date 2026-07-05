@@ -63,7 +63,7 @@ jobs:
         with:
           containerfiles: |
             ./Containerfile
-          image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: latest
           registry: ghcr.io
           registry-user: ${{ github.actor }}
@@ -88,7 +88,7 @@ jobs:
         with:
           containerfiles: |
             ./Containerfile
-          image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:nvidia
+          image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: nvidia
           registry: ghcr.io
           registry-user: ${{ github.actor }}

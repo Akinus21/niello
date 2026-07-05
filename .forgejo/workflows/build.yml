@@ -63,7 +63,7 @@ jobs:
       - name: Fix registries configuration
         run: |
           # Create a minimal registries.conf that avoids v1/v2 mixing
-          sudo tee /etc/containers/registries.conf > /dev/null << 'EOF'
+          cat > /etc/containers/registries.conf << 'EOF'
           [registries.search]
           registries = ["docker.io", "quay.io", "registry.fedoraproject.org"]
 

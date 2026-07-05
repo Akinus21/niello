@@ -92,9 +92,21 @@ jobs:
     permissions:
       contents: read
       packages: write
+    env:
+      CONTAINERS_REGISTRIES_CONF: /etc/containers/registries.conf
     steps:
       - name: Check out
         uses: actions/checkout@v4
+
+      - name: Fix registries configuration
+        run: |
+          cat > /etc/containers/registries.conf << 'EOF'
+          [registries.search]
+          registries = ["docker.io", "quay.io", "registry.fedoraproject.org"]
+
+          [registries.block]
+          registries = []
+          EOF
 
       - name: Build NVIDIA variant with buildah
         uses: redhat-actions/buildah-build@v2

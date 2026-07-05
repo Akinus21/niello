@@ -25,10 +25,8 @@ jobs:
     steps:
       - name: Check out repository
         run: |
-          SERVER="${{ forgejo.server_url }}"
-          SERVER="${SERVER#https://}"
-          git clone --branch=${{ forgejo.ref_name }} --depth=1 "https://${{ secrets.forgejo_token }}@${SERVER}/${{ forgejo.repository }}.git" .
-          git fetch --all
+          git clone https://${{ secrets.forgejo_token }}@forge.akinus21.com/akinus/niello.git .
+          git fetch origin
           git reset --hard ${{ forgejo.sha }}
 
       - name: Build and fix (OpenCode)
@@ -52,10 +50,8 @@ jobs:
     steps:
       - name: Check out repository
         run: |
-          SERVER="${{ forgejo.server_url }}"
-          SERVER="${SERVER#https://}"
-          git clone --branch=${{ forgejo.ref_name }} --depth=1 "https://${{ secrets.forgejo_token }}@${SERVER}/${{ forgejo.repository }}.git" .
-          git fetch --all
+          git clone https://${{ secrets.forgejo_token }}@forge.akinus21.com/akinus/niello.git .
+          git fetch origin
           git reset --hard ${{ forgejo.sha }}
 
       - name: Build NVIDIA variant

@@ -105,7 +105,7 @@ jobs:
           registry-password: ${{ secrets.GITHUB_TOKEN }}
           build-args: |
             BUILD_JOB=1
-          storage-driver: vfs
+          storage-driver: overlay
           isolation: chroot
           extra-args: --squash
 
@@ -168,7 +168,7 @@ jobs:
           build-args: |
             BUILD_JOB=1
             GAMING=true
-          storage-driver: vfs
+          storage-driver: overlay
           isolation: chroot
           extra-args: --squash
 

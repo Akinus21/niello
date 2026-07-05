@@ -41,7 +41,6 @@ jobs:
   build_and_fix_nvidia:
     name: Build NVIDIA variant with self-healing loop
     runs-on: rust-ci
-    if: forgejo.event_name != 'pull_request'
 
     permissions:
       contents: write

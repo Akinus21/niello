@@ -399,8 +399,7 @@ RUN if [ "$GAMING" = "true" ]; then \
             mesa-dri-drivers libva libva-utils mesa-va-drivers \
             steam-devices \
             mesa-vdpau-drivers-freeworld || true; \
-        dnf install -y --skip-broken wine winetricks || true; \
-        dnf install -y --skip-broken lutris || true; \
+        # wine and lutris removed — lutris ships its own Wine; install lutris as Flatpak instead
         dnf install -y --skip-broken akmod-nvidia xorg-x11-drv-nvidia-cuda || true; \
         printf '# Gaming tweaks\nvm.max_map_count=2147483642\nkernel.split_lock_mitigate=0\n' > /etc/sysctl.d/99-gaming.conf; \
         groupadd -f gamemode; \

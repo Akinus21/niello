@@ -27,7 +27,7 @@ jobs:
         run: |
           git clone https://${{ secrets.forgejo_token }}@forge.akinus21.com/akinus/niello.git .
           git fetch origin
-          git reset --hard ${{ forgejo.sha }}
+          git reset --hard ${{ github.sha }}
 
       - name: Build and fix (OpenCode)
         env:
@@ -51,7 +51,7 @@ jobs:
         run: |
           git clone https://${{ secrets.forgejo_token }}@forge.akinus21.com/akinus/niello.git .
           git fetch origin
-          git reset --hard ${{ forgejo.sha }}
+          git reset --hard ${{ github.sha }}
 
       - name: Build NVIDIA variant
         env:

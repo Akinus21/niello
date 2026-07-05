@@ -54,9 +54,22 @@ jobs:
     permissions:
       contents: read
       packages: write
+    env:
+      CONTAINERS_REGISTRIES_CONF: /etc/containers/registries.conf
     steps:
       - name: Check out
         uses: actions/checkout@v4
+
+      - name: Fix registries configuration
+        run: |
+          # Create a minimal registries.conf that avoids v1/v2 mixing
+          sudo tee /etc/containers/registries.conf > /dev/null << 'EOF'
+          [registries.search]
+          registries = ["docker.io", "quay.io", "registry.fedoraproject.org"]
+
+          [registries.block]
+          registries = []
+          EOF
 
       - name: Build with buildah
         uses: redhat-actions/buildah-build@v2

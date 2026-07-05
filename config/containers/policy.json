@@ -1,7 +1,7 @@
 {
     "default": [{"type": "reject"}],
     "transports": {
-        "docker": {
+        "docker-daemon": {
             "quay.io": [{"type": "insecureAcceptAnything"}],
             "registry.fedoraproject.org": [{"type": "insecureAcceptAnything"}],
             "docker.io": [{"type": "insecureAcceptAnything"}],

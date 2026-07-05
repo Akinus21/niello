@@ -88,7 +88,7 @@ jobs:
   build-nvidia:
     name: Build NVIDIA variant
     runs-on: rust-ci
-    needs: validate
+    needs: [validate, build]
     permissions:
       contents: read
       packages: write

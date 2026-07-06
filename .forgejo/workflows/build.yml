@@ -178,9 +178,21 @@ jobs:
     runs-on: rust-ci
     needs: [build, build-nvidia]
     if: github.event_name != 'pull_request'
+    env:
+      CONTAINERS_REGISTRIES_CONF: /etc/containers/registries.conf
     steps:
       - name: Check out
         uses: actions/checkout@v4
+
+      - name: Fix registries configuration
+        run: |
+          cat > /etc/containers/registries.conf << 'EOF'
+          [registries.search]
+          registries = ["docker.io", "quay.io", "registry.fedoraproject.org"]
+
+          [registries.block]
+          registries = []
+          EOF
 
       - name: Push to GHCR
         run: |

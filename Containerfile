@@ -4,10 +4,15 @@ FROM quay.io/fedora/fedora-bootc:44
 COPY config/containers/policy.json /etc/containers/policy.json
 
 # ── RPMFusion + Full Codec Stack (uBlue hardware enablement) ───
-RUN dnf install -y \
+# Disable fedora-cisco-openh264 — its metalink is unreachable from CI runners
+# and openh264 isn't needed for this image
+RUN dnf config-manager --disable fedora-cisco-openh264 2>/dev/null || \
+    dnf config-manager --set-disabled fedora-cisco-openh264 2>/dev/null || \
+    true
+RUN dnf install -y --setopt=retries=5 --setopt=timeout=120 --disablerepo=fedora-cisco-openh264 \
     https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
     https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm \
-    && dnf install -y --skip-broken \
+    && dnf install -y --skip-broken --setopt=retries=5 --setopt=timeout=120 --disablerepo=fedora-cisco-openh264 \
     mesa-va-drivers-freeworld \
     ffmpeg \
     pipewire-codec-aptx \

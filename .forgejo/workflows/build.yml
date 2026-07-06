@@ -178,6 +178,9 @@ jobs:
     runs-on: rust-ci
     needs: [build, build-nvidia]
     if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
     env:
       CONTAINERS_REGISTRIES_CONF: /etc/containers/registries.conf
     steps:

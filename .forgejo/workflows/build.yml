@@ -95,13 +95,24 @@ jobs:
           echo "=== Disk space after cleanup ==="
           df -h /var/lib/containers/storage
 
+      - name: Diagnose buildah
+        run: |
+          echo "=== buildah version ==="
+          buildah --version
+          echo "=== workspace ==="
+          ls -la
+          echo "=== Containerfile head ==="
+          head -5 Containerfile
+          echo "=== Test buildah can read Containerfile ==="
+          buildah bud --no-cache --storage-driver=overlay --isolation=chroot -f Containerfile -t test-image --build-arg BUILD_JOB=1 . 2>&1 | head -20 || echo "buildah bud dry-run failed (expected - it's expensive)"
+
       - name: Build with buildah
         id: build-image
         uses: redhat-actions/buildah-build@v2
         with:
           containerfiles: |
             ./Containerfile
-          image: ${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_NAME }}
+          image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_NAME }}
           tags: latest
           build-args: |
             BUILD_JOB=1
@@ -166,13 +177,24 @@ jobs:
           echo "=== Disk space after cleanup ==="
           df -h /var/lib/containers/storage
 
+      - name: Diagnose buildah
+        run: |
+          echo "=== buildah version ==="
+          buildah --version
+          echo "=== workspace ==="
+          ls -la
+          echo "=== Containerfile head ==="
+          head -5 Containerfile
+          echo "=== Test buildah can read Containerfile ==="
+          buildah bud --no-cache --storage-driver=overlay --isolation=chroot -f Containerfile -t test-image --build-arg BUILD_JOB=1 . 2>&1 | head -20 || echo "buildah bud dry-run failed (expected - it's expensive)"
+
       - name: Build NVIDIA variant with buildah
         id: build-image
         uses: redhat-actions/buildah-build@v2
         with:
           containerfiles: |
             ./Containerfile
-          image: ${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_NAME }}
+          image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_NAME }}
           tags: nvidia
           build-args: |
             BUILD_JOB=1

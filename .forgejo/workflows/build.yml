@@ -48,9 +48,10 @@ jobs:
 
   # ── Main build: runs buildah directly ────────────────────────────
   build:
-    name: Build image
+    name: Build and push image
     runs-on: rust-ci
     needs: validate
+    if: github.event_name != 'pull_request'
     permissions:
       contents: read
       packages: write
@@ -94,26 +95,35 @@ jobs:
           df -h /var/lib/containers/storage
 
       - name: Build with buildah
+        id: build-image
         uses: redhat-actions/buildah-build@v2
         with:
           containerfiles: |
             ./Containerfile
-          image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
+          image: ${{ env.IMAGE_NAME }}
           tags: latest
-          registry: ghcr.io
-          registry-user: ${{ github.actor }}
-          registry-password: ${{ secrets.GITHUB_TOKEN }}
           build-args: |
             BUILD_JOB=1
           storage-driver: overlay
           isolation: chroot
           extra-args: --squash
 
+      - name: Push to GHCR
+        if: github.event_name != 'pull_request'
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build-image.outputs.image }}
+          tags: ${{ steps.build-image.outputs.tags }}
+          registry: ${{ env.IMAGE_REGISTRY }}
+          username: akinus21
+          password: ${{ secrets.GH_PAT }}
+
   # ── Build NVIDIA variant ─────────────────────────────────────────
   build-nvidia:
-    name: Build NVIDIA variant
+    name: Build and push NVIDIA variant
     runs-on: rust-ci
-    needs: [validate, build]
+    needs: validate
+    if: github.event_name != 'pull_request'
     permissions:
       contents: read
       packages: write
@@ -156,15 +166,13 @@ jobs:
           df -h /var/lib/containers/storage
 
       - name: Build NVIDIA variant with buildah
+        id: build-image
         uses: redhat-actions/buildah-build@v2
         with:
           containerfiles: |
             ./Containerfile
-          image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
+          image: ${{ env.IMAGE_NAME }}
           tags: nvidia
-          registry: ghcr.io
-          registry-user: ${{ github.actor }}
-          registry-password: ${{ secrets.GITHUB_TOKEN }}
           build-args: |
             BUILD_JOB=1
             GAMING=true
@@ -172,36 +180,15 @@ jobs:
           isolation: chroot
           extra-args: --squash
 
-  # ── On success: push images ──────────────────────────────────────
-  push:
-    name: Push image
-    runs-on: rust-ci
-    needs: [build, build-nvidia]
-    if: github.event_name != 'pull_request'
-    permissions:
-      contents: read
-      packages: write
-    env:
-      CONTAINERS_REGISTRIES_CONF: /etc/containers/registries.conf
-    steps:
-      - name: Check out
-        uses: actions/checkout@v4
-
-      - name: Fix registries configuration
-        run: |
-          cat > /etc/containers/registries.conf << 'EOF'
-          [registries.search]
-          registries = ["docker.io", "quay.io", "registry.fedoraproject.org"]
-
-          [registries.block]
-          registries = []
-          EOF
-
-      - name: Push to GHCR
-        run: |
-          echo "${{ secrets.GH_PAT }}" | buildah login -u akinus21 --password-stdin ghcr.io
-          buildah push ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          buildah push ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:nvidia
+      - name: Push NVIDIA variant to GHCR
+        if: github.event_name != 'pull_request'
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build-image.outputs.image }}
+          tags: ${{ steps.build-image.outputs.tags }}
+          registry: ${{ env.IMAGE_REGISTRY }}
+          username: akinus21
+          password: ${{ secrets.GH_PAT }}
 
   # ── On failure: create fix branch ───────────────────────────────
   fix:

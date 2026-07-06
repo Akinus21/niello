@@ -10,7 +10,8 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_REGISTRY: ghcr.io/akinus21
+  IMAGE_REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: akinus21
   IMAGE_NAME: niello
 
 jobs:
@@ -100,7 +101,7 @@ jobs:
         with:
           containerfiles: |
             ./Containerfile
-          image: ${{ env.IMAGE_NAME }}
+          image: ${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_NAME }}
           tags: latest
           build-args: |
             BUILD_JOB=1
@@ -171,7 +172,7 @@ jobs:
         with:
           containerfiles: |
             ./Containerfile
-          image: ${{ env.IMAGE_NAME }}
+          image: ${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_NAME }}
           tags: nvidia
           build-args: |
             BUILD_JOB=1

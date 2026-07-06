@@ -199,7 +199,7 @@ jobs:
 
       - name: Push to GHCR
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | buildah login -u ${{ github.actor }} --password-stdin ghcr.io
+          echo "${{ secrets.GH_PAT }}" | buildah login -u akinus21 --password-stdin ghcr.io
           buildah push ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           buildah push ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:nvidia
 

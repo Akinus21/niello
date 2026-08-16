@@ -507,6 +507,7 @@ RUN git clone --depth=1 \
     https://forge.akinus21.com/akinus/corten.git \
     /tmp/corten && \
     cd /tmp/corten && \
+    rm -f ~/.cargo/.package-cache ~/.cargo/registry/cache/.package-cache 2>/dev/null; \
     cargo build --release --features ninep && \
     install -m 755 target/release/corten /usr/local/bin/corten && \
     cd / && rm -rf /tmp/corten

@@ -488,6 +488,33 @@ RUN if [ "$GAMING" = "true" ]; then \
         fi; \
     fi
 
+# ══════════════════════════════════════════════════════════════
+# CORTEN — Rust-based tag filesystem (file manager backend; yazi
+# remains the file manager frontend). Built from source since
+# Corten isn't published to any package registry.
+#
+# - Single binary named `corten` (default src/main.rs, not a workspace)
+# - `ninep` feature is optional/non-default but required for Corten's
+#   core 9P mount capability — must be built explicitly
+# - rusqlite uses the `bundled` feature (compiles its own SQLite) —
+#   no sqlite-devel needed
+# - Mounting shells out to the kernel's built-in 9p client (`mount -t
+#   9p`), not FUSE — no fuse3/fuse3-devel needed either
+# ══════════════════════════════════════════════════════════════
+RUN dnf install -y --skip-broken rust cargo
+
+RUN git clone --depth=1 \
+    https://forge.akinus21.com/akinus/corten.git \
+    /tmp/corten && \
+    cd /tmp/corten && \
+    cargo build --release --features ninep && \
+    install -m 755 target/release/corten /usr/local/bin/corten && \
+    cd / && rm -rf /tmp/corten
+
+# Drop the Rust toolchain after building — only the compiled binary is
+# needed at runtime, and rust/cargo add real image size otherwise.
+RUN dnf remove -y rust cargo && dnf clean all
+
 # ── Copy udiskie user service ──────────────────────────────────────
 COPY config/systemd/user/niello-udiskie.service /etc/systemd/user/
 

@@ -74,6 +74,11 @@ jobs:
           registries = []
           EOF
 
+      - name: Prune build storage
+        if: always()
+        run: |
+          curl -s -X POST "http://localhost:2375/system/prune?all=true" || true
+
       - name: Clean buildah storage before build
         run: |
           echo "=== Disk space before cleanup ==="
@@ -150,6 +155,11 @@ jobs:
           [registries.block]
           registries = []
           EOF
+
+      - name: Prune build storage
+        if: always()
+        run: |
+          curl -s -X POST "http://localhost:2375/system/prune?all=tru>
 
       - name: Clean buildah storage before build
         run: |

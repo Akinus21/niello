@@ -331,6 +331,7 @@ RUN dnf install -y --skip-broken \
     libwebp-devel \
     librsvg2-devel \
     tomlplusplus-devel \
+    json-devel \
     greetd \
     dbus-daemon \
     polkit \

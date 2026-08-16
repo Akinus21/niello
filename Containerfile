@@ -340,6 +340,12 @@ RUN dnf install -y --skip-broken \
     wayland-protocols-devel \
     just
 
+# ── Vendor stb headers (no distro package exists — stb is intentionally
+# header-only, drop-in code, never packaged with pkg-config) ──────────────
+RUN mkdir -p /usr/include/stb && \
+    curl -fsSL -o /usr/include/stb/stb_image_resize2.h \
+    https://raw.githubusercontent.com/nothings/stb/master/stb_image_resize2.h
+
 # ── Clone + build noctalia-greeter (Eldritch theme) ────────────────────────
 RUN git clone --depth=1 \
     https://github.com/noctalia-dev/noctalia-greeter.git \

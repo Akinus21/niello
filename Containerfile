@@ -501,20 +501,26 @@ RUN if [ "$GAMING" = "true" ]; then \
 # - Mounting shells out to the kernel's built-in 9p client (`mount -t
 #   9p`), not FUSE — no fuse3/fuse3-devel needed either
 # ══════════════════════════════════════════════════════════════
-RUN dnf install -y --skip-broken rust cargo
+# ══════════════════════════════════════════════════════════════
+# HOMEBREW — installed here since it's needed for Corten below, and
+# referenced by the brew-update.timer unit configured earlier.
+# ══════════════════════════════════════════════════════════════
+RUN dnf install -y --skip-broken procps-ng file
 
-RUN git clone --depth=1 \
-    https://forge.akinus21.com/akinus/corten.git \
-    /tmp/corten && \
-    cd /tmp/corten && \
-    rm -f ~/.cargo/.package-cache ~/.cargo/registry/cache/.package-cache 2>/dev/null; \
-    cargo build --release --features ninep && \
-    install -m 755 target/release/corten /usr/local/bin/corten && \
-    cd / && rm -rf /tmp/corten
+RUN git config --global --add safe.directory '*' && \
+    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-# Drop the Rust toolchain after building — only the compiled binary is
-# needed at runtime, and rust/cargo add real image size otherwise.
-RUN dnf remove -y rust cargo && dnf clean all
+ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
+
+# ══════════════════════════════════════════════════════════════
+# CORTEN — Rust-based tag filesystem (file manager backend; yazi
+# remains the file manager frontend). Installed via your Forgejo
+# Homebrew tap rather than built from source in-image — much more
+# reliable than fighting cargo's cache-directory behavior on every
+# build, and matches how akclip/corten releases are already shipped.
+# ══════════════════════════════════════════════════════════════
+RUN brew tap akinus/akinus21-forge https://forge.akinus21.com/akinus/homebrew-akinus21-forge && \
+    brew install akinus/akinus21-forge/corten
 
 # ── Copy udiskie user service ──────────────────────────────────────
 COPY config/systemd/user/niello-udiskie.service /etc/systemd/user/

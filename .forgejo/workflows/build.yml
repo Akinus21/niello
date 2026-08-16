@@ -77,7 +77,10 @@ jobs:
       - name: Prune build storage
         if: always()
         run: |
-          curl -s -X POST "http://localhost:2375/system/prune?all=true" || true
+          curl -s -X POST "http://localhost:2375/v1.55/containers/prune" || true
+          curl -s -X POST 'http://localhost:2375/v1.55/images/prune?filters=%7B%22dangling%22%3A%5B%22false%22%5D%7D' || true
+          curl -s -X POST "http://localhost:2375/v1.55/networks/prune" || true
+          curl -s -X POST "http://localhost:2375/v1.55/volumes/prune" || true
 
       - name: Clean buildah storage before build
         run: |
@@ -159,7 +162,10 @@ jobs:
       - name: Prune build storage
         if: always()
         run: |
-          curl -s -X POST "http://localhost:2375/system/prune?all=tru>
+          curl -s -X POST "http://localhost:2375/v1.55/containers/prune" || true
+          curl -s -X POST 'http://localhost:2375/v1.55/images/prune?filters=%7B%22dangling%22%3A%5B%22false%22%5D%7D' || true
+          curl -s -X POST "http://localhost:2375/v1.55/networks/prune" || true
+          curl -s -X POST "http://localhost:2375/v1.55/volumes/prune" || true
 
       - name: Clean buildah storage before build
         run: |

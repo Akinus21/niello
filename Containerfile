@@ -315,6 +315,7 @@ RUN systemctl enable brew-update.timer
 RUN dnf install -y --skip-broken \
     meson \
     ninja-build \
+    cmake \
     gcc-c++ \
     wlroots-devel \
     libinput-devel \
@@ -329,6 +330,7 @@ RUN dnf install -y --skip-broken \
     glib2-devel \
     libwebp-devel \
     librsvg2-devel \
+    tomlplusplus-devel \
     greetd \
     dbus-daemon \
     polkit \

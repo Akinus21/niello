@@ -1,0 +1,17 @@
+[Unit]
+Description=Niello first-boot user creation wizard
+DefaultDependencies=no
+After=systemd-remount-fs.service local-fs.target
+Before=greetd.service
+ConditionPathExists=!/etc/niello-firstboot-done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/niello-firstboot.sh
+StandardInput=tty
+StandardOutput=tty
+TTYPath=/dev/tty1
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

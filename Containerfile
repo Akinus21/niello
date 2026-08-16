@@ -24,13 +24,51 @@ LABEL org.opencontainers.image.description="Immutable Fedora Atomic — Niri + N
 LABEL org.opencontainers.image.source="https://github.com/Akinus21/niello"
 LABEL org.opencontainers.image.vendor="akinus"
 
+# ══════════════════════════════════════════════════════════════
+# CORE SYSTEM ESSENTIALS — guaranteed present, not assumed from base image
+# ══════════════════════════════════════════════════════════════
+
+# sudo — explicitly installed and wheel group granted, rather than trusting
+# the base image already has this configured correctly.
+RUN dnf install -y sudo && \
+    mkdir -p /etc/sudoers.d && \
+    printf '%%wheel ALL=(ALL) ALL\n' > /etc/sudoers.d/10-wheel && \
+    chmod 0440 /etc/sudoers.d/10-wheel
+
+# Root account: LOCKED, not blank-password. A blank password would let
+# anyone log in as root with no credentials — locking disables password
+# login entirely (root is still reachable via sudo from a wheel-group user).
+RUN passwd -l root
+
+# Hostname — default, user can change post-boot via hostnamectl.
+RUN echo 'niello' > /etc/hostname
+
+# SSH server — enabled for remote access/debugging.
+RUN dnf install -y openssh-server && \
+    systemctl enable sshd
+
+# Time sync — required for TLS/HTTPS repo access and OIDC auth to work
+# correctly; not assumed from the base image.
+RUN dnf install -y chrony && \
+    systemctl enable chronyd
+
+# Firewall — explicitly installed and enabled rather than assumed.
+RUN dnf install -y firewalld && \
+    systemctl enable firewalld
+
 # ── OS Identity ──────────────────────────────────────────────
 COPY usr/lib/os-release /usr/lib/os-release
 
 # ── Terra repo + Noctalia Shell ─────────────────────────────
-# Noctalia Shell — via Terra repo (Fyra Labs)
+# Noctalia Shell — via Terra repo (Fyra Labs). Terra's metadata has shown
+# checksum-mismatch flakiness during builds — if the install fails here,
+# don't just print a comment nobody will see; leave a marker so niello-init
+# retries and warns the user at first login rather than silently booting
+# into a blank/broken desktop.
 RUN dnf install -y --skip-broken --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$releasever' terra-release && \
-    dnf install -y --skip-broken noctalia-shell || echo "Terra repo unavailable — install noctalia-shell at runtime"
+    dnf install -y --skip-broken noctalia-shell || \
+    (echo "WARNING: noctalia-shell install failed at build time (Terra repo unavailable)" && \
+     touch /etc/niello-noctalia-missing)
 
 # ── Desktop Stack ────────────────────────────────────────────
 RUN dnf install -y \
@@ -49,7 +87,8 @@ RUN dnf install -y \
     just \
     fuzzel \
     xdg-user-dirs \
-    xdg-utils
+    xdg-utils \
+    newt
 
 # ══════════════════════════════════════════════════════════════
 # NETWORKING + BLUETOOTH — Noctalia is UI-only, needs real daemons
@@ -98,8 +137,15 @@ RUN systemctl enable niello-networking 2>/dev/null || true
 # ══════════════════════════════════════════════════════════════
 # FILE MANAGER — keyboard-driven, Rust, fits ecosystem until
 # Corten's frontend (Corten Patina) exists
+# yazi is not packaged in Fedora/RPMFusion/Terra — install prebuilt
+# binary directly from upstream GitHub releases instead.
 # ══════════════════════════════════════════════════════════════
-RUN dnf install -y yazi
+RUN curl -fsSL -o /tmp/yazi.zip \
+    "https://github.com/sxyazi/yazi/releases/latest/download/yazi-x86_64-unknown-linux-gnu.zip" && \
+    unzip -o /tmp/yazi.zip -d /tmp/yazi-extract && \
+    install -m 755 /tmp/yazi-extract/*/yazi /usr/local/bin/yazi && \
+    install -m 755 /tmp/yazi-extract/*/ya /usr/local/bin/ya && \
+    rm -rf /tmp/yazi.zip /tmp/yazi-extract
 
 # ══════════════════════════════════════════════════════════════
 # BACKUP BROWSER — until Iron is complete
@@ -359,6 +405,19 @@ RUN curl -fsSL \
     fi && \
     rm -rf /tmp/nirinit*
 
+# ══════════════════════════════════════════════════════════════
+# FIRST-BOOT USER CREATION WIZARD
+# Root is locked (no password login). On first boot, if no real user
+# exists yet, prompt to create one with sudo/wheel access before greetd
+# starts. Safe to re-run — no-ops once a user exists or it has completed.
+# Users can be created afterward as normal via `useradd`/`sudo useradd`.
+# ══════════════════════════════════════════════════════════════
+COPY config/niello-init/niello-firstboot.sh /usr/local/bin/niello-firstboot.sh
+RUN chmod +x /usr/local/bin/niello-firstboot.sh
+
+COPY config/systemd/niello-firstboot.service /etc/systemd/system/niello-firstboot.service
+RUN systemctl enable niello-firstboot.service 2>/dev/null || true
+
 # ── niello-init bootstrap ─────────────────────────────────────
 COPY config/niello-init/niello-init /tmp/niello-init
 RUN mkdir -p /usr/local/bin && \
@@ -422,6 +481,13 @@ RUN if [ "$GAMING" = "true" ]; then \
 
 # ── Copy udiskie user service ──────────────────────────────────────
 COPY config/systemd/user/niello-udiskie.service /etc/systemd/user/
+
+# ══════════════════════════════════════════════════════════════
+# SELINUX RELABEL — files placed via curl/install (firmware, yazi, ya,
+# nirinit) don't get correct SELinux contexts the way dnf-installed files
+# do. Relabel explicitly so they aren't silently denied under enforcing.
+# ══════════════════════════════════════════════════════════════
+RUN restorecon -Rv /usr/lib/firmware/intel /usr/local/bin 2>/dev/null || true
 
 # ── Cleanup ─────────────────────────────────────────────────
 RUN dnf clean all && rm -rf /var/cache/dnf/*

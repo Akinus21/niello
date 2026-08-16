@@ -14,6 +14,10 @@ env:
   IMAGE_NAMESPACE: akinus21
   IMAGE_NAME: niello
 
+concurrency:
+  group: niello-build-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   # ── Validation: fast checks before any build ──────────────────────
   validate:
@@ -34,12 +38,10 @@ jobs:
 
           echo "Validating Containerfile syntax..."
 
-          # Check for merged RUN commands with trailing backslash
           if grep -q '^RUN.*\\$' Containerfile; then
             echo "WARNING: Line continuation detected in RUN command"
           fi
 
-          # Ensure base image is set
           if ! head -20 Containerfile | grep -q '^FROM'; then
             echo "ERROR: No FROM instruction found in first 20 lines"
             exit 1
@@ -64,7 +66,6 @@ jobs:
 
       - name: Fix registries configuration
         run: |
-          # Create a minimal registries.conf that avoids v1/v2 mixing
           cat > /etc/containers/registries.conf << 'EOF'
           [registries.search]
           registries = ["docker.io", "quay.io", "registry.fedoraproject.org"]
@@ -78,18 +79,13 @@ jobs:
           echo "=== Disk space before cleanup ==="
           df -h /var/lib/containers/storage
 
-          # Stop any running buildah containers
           buildah rm --all 2>/dev/null || true
-
-          # Remove all images
           buildah rmi -a -f 2>/dev/null || true
 
-          # Deep clean storage directory
           rm -rf /var/lib/containers/storage/tmp/* 2>/dev/null || true
           rm -rf /var/lib/containers/storage/overlay/* 2>/dev/null || true
           rm -rf /var/lib/containers/storage/vfs/* 2>/dev/null || true
 
-          # System prune
           buildah system prune -a -f 2>/dev/null || true
 
           echo "=== Disk space after cleanup ==="
@@ -130,11 +126,11 @@ jobs:
           username: akinus21
           password: ${{ secrets.GH_PAT }}
 
-  # ── Build NVIDIA variant ─────────────────────────────────────────
+  # ── Build NVIDIA variant — now waits for `build` to finish ────────
   build-nvidia:
     name: Build and push NVIDIA variant
     runs-on: rust-ci
-    needs: validate
+    needs: [validate, build]
     if: github.event_name != 'pull_request'
     permissions:
       contents: read
@@ -160,18 +156,13 @@ jobs:
           echo "=== Disk space before cleanup ==="
           df -h /var/lib/containers/storage
 
-          # Stop any running buildah containers
           buildah rm --all 2>/dev/null || true
-
-          # Remove all images
           buildah rmi -a -f 2>/dev/null || true
 
-          # Deep clean storage directory
           rm -rf /var/lib/containers/storage/tmp/* 2>/dev/null || true
           rm -rf /var/lib/containers/storage/overlay/* 2>/dev/null || true
           rm -rf /var/lib/containers/storage/vfs/* 2>/dev/null || true
 
-          # System prune
           buildah system prune -a -f 2>/dev/null || true
 
           echo "=== Disk space after cleanup ==="
@@ -234,12 +225,7 @@ jobs:
 
           git checkout -b "$BRANCH_NAME"
 
-          # Apply common fixes based on typical build failures
-
-          # Fix 1: Remove trailing backslash from RUN commands
           sed -i 's/RUN.*\\$/RUN echo "Fixed trailing backslash"/' Containerfile || true
-
-          # Fix 2: Ensure dnf install commands are properly formed
           sed -i 's/dnf install -y \\$/dnf install -y/' Containerfile || true
 
           if git diff --quiet; then

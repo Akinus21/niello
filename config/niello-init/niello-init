@@ -190,12 +190,10 @@ main() {
     fi
     echo $$ > "$LOCK_FILE"
 
-    # ── Detect an OS image switch (e.g. bootc switch) ────────────────────────
+    # ── OS image switch tracking (informational — logged, not gating) ───────
     # $HOME persists across deployments, but /usr/share/niello/build-id is
-    # baked fresh into every image build. If it differs from what we saw
-    # last time, the OS underneath changed — force a full run regardless of
-    # the sync-interval skip below, since bootstrap steps (Homebrew, etc.)
-    # need to run again on the new image even if $HOME looks "recently synced".
+    # baked fresh into every image build, so this tells us if the OS
+    # underneath changed since the last run.
     IMAGE_BUILD_ID=""
     if [[ -f /usr/share/niello/build-id ]]; then
         IMAGE_BUILD_ID=$(cat /usr/share/niello/build-id 2>/dev/null)
@@ -205,28 +203,18 @@ main() {
     if [[ -f "$STORED_BUILD_ID_FILE" ]]; then
         STORED_BUILD_ID=$(cat "$STORED_BUILD_ID_FILE" 2>/dev/null)
     fi
-    IMAGE_CHANGED=false
     if [[ -n "$IMAGE_BUILD_ID" ]] && [[ "$IMAGE_BUILD_ID" != "$STORED_BUILD_ID" ]]; then
-        IMAGE_CHANGED=true
+        echo "niello-init: OS image changed since last run"
     fi
     if [[ -n "$IMAGE_BUILD_ID" ]]; then
         mkdir -p "$NIELLO_STATE_DIR"
         echo "$IMAGE_BUILD_ID" > "$STORED_BUILD_ID_FILE"
     fi
 
-    # ── Skip if synced recently ────────────────────────────────────────────────
-    if [[ -f "$SYNC_MARKER" ]] && [[ "$FORCE_INSTALL" != "true" ]] && [[ "$IMAGE_CHANGED" != "true" ]]; then
-        local last_sync age
-        last_sync=$(get_version "last_sync" || echo "0")
-        age=$(( $(date +%s) - last_sync ))
-        if [[ "$age" -lt "$SYNC_INTERVAL" ]]; then
-            echo "niello-init: skipping — synced ${age}s ago (interval=${SYNC_INTERVAL}s)"
-            rm -f "$LOCK_FILE"
-            return 0
-        fi
-    elif [[ "$IMAGE_CHANGED" == "true" ]]; then
-        echo "niello-init: OS image changed since last run — forcing full sync"
-    fi
+    # No sync-interval skip: this runs its full dependency-check-and-update
+    # pass every time it's invoked — on login (niello-init.service) and
+    # nightly at midnight (niello-init.timer). Cadence is controlled by
+    # those two triggers, not by a wall-clock guard inside the script.
 
     # Remove strict error-exit for the background run so one failure doesn't kill everything
     set +e
@@ -291,6 +279,20 @@ main() {
             || warn "niello-init.service: enable failed"
     fi
 
+    sync_skel ".config/systemd/user/niello-init.timer"
+    if [[ -f /etc/skel/.config/systemd/user/niello-init.timer ]] && \
+       [[ ! -f "$HOME/.config/systemd/user/niello-init.timer" ]]; then
+        cp /etc/skel/.config/systemd/user/niello-init.timer \
+           "$HOME/.config/systemd/user/niello-init.timer" \
+           && ok "niello-init.timer: copied to user dir" \
+           || warn "niello-init.timer: failed to copy"
+    fi
+    if ! systemctl --user is-enabled niello-init.timer 2>/dev/null; then
+        systemctl --user enable --now niello-init.timer 2>/dev/null \
+            && ok "niello-init.timer: enabled (midnight nightly)" \
+            || warn "niello-init.timer: enable failed"
+    fi
+
     # ── Always: sync + enable GNOME keyring ─────────────────────────────────
     sync_skel ".config/systemd/user/niello-keyring.service"
     if ! systemctl --user is-enabled niello-keyring 2>/dev/null; then
@@ -349,11 +351,9 @@ main() {
             brew_ensure "iron"
         fi
 
-        # ONLY install missing packages on first run (when not yet marked installed)
-        if ! is_installed "homebrew-packages"; then
-            log "--- Homebrew (first run - installing missing packages) ---"
-            brew tap akinus/akinus21-forge https://forge.akinus21.com/akinus/homebrew-akinus21-forge \
-                2>/dev/null || warn "brew: tap akinus/akinus21-forge failed"
+        log "--- Homebrew (checking all packages) ---"
+        brew tap akinus/akinus21-forge https://forge.akinus21.com/akinus/homebrew-akinus21-forge \
+            2>/dev/null || warn "brew: tap akinus/akinus21-forge failed"
             for pkg in lazygit git-delta gh gitleaks; do brew_ensure "$pkg"; done
             for pkg in atuin tmux tldr; do brew_ensure "$pkg"; done
             for pkg in jq yq xh; do brew_ensure "$pkg"; done
@@ -416,10 +416,6 @@ IRONEOF
             fi
             brew_ensure "niello-session-manager"
             brew_ensure "akspraypaint"
-            mark_installed "homebrew-packages"
-        else
-            ok "Homebrew: packages already installed (use --force to reinstall)"
-        fi
     fi
 
     # ── Bluefin CLI tools ───────────────────────────────────────────────────
@@ -431,6 +427,50 @@ IRONEOF
             warn "Bluefin CLI: ujust bluefin-cli failed"
     else
         warn "Bluefin CLI: ujust not found — skipping bluefin-cli"
+    fi
+
+    # ── Distrobox containers ──────────────────────────────────────────────
+    log "--- Distrobox ---"
+    if command -v distrobox >/dev/null 2>&1; then
+        DISTROBOX_LIST=$(distrobox list --no-color 2>/dev/null | tail -n +2 | awk -F'|' '{gsub(/ /,"",$2); print $2}')
+        if [[ -z "$DISTROBOX_LIST" ]]; then
+            ok "Distrobox: no containers to update"
+        else
+            while IFS= read -r box; do
+                [[ -z "$box" ]] && continue
+                log "Distrobox: upgrading $box..."
+                distrobox upgrade "$box" 2>&1 | tail -10 >> "$NIELLO_LOG" \
+                    && ok "Distrobox: $box updated" \
+                    || warn "Distrobox: $box update failed"
+            done <<< "$DISTROBOX_LIST"
+        fi
+    else
+        warn "Distrobox: not installed — skipping"
+    fi
+
+    # ── DNF / bootc system update status ────────────────────────────────────
+    # This is an immutable bootc/ostree system — /usr is read-only at runtime,
+    # so real system updates happen via `bootc upgrade` (already handled at
+    # boot by niello-boot-upgrade.service, which creates a new deployment
+    # requiring a reboot to take effect). This section only REPORTS status —
+    # it does not and should not trigger a system upgrade from a login script.
+    log "--- System update status (bootc) ---"
+    if command -v bootc >/dev/null 2>&1; then
+        BOOTC_STATUS=$(bootc status --format json 2>/dev/null)
+        if [[ -n "$BOOTC_STATUS" ]]; then
+            STAGED=$(echo "$BOOTC_STATUS" | python3 -c "import json,sys; d=json.load(sys.stdin); print('yes' if d.get('status',{}).get('staged') else 'no')" 2>/dev/null || echo "unknown")
+            if [[ "$STAGED" == "yes" ]]; then
+                ok "System update: staged, reboot to apply"
+            elif [[ "$STAGED" == "no" ]]; then
+                ok "System update: none pending"
+            else
+                warn "System update: status unknown (bootc output not parseable)"
+            fi
+        else
+            warn "System update: 'bootc status' returned nothing"
+        fi
+    else
+        warn "System update: bootc not found — skipping status check"
     fi
 
     # ── Ensure Noctalia is reachable ────────────────────────────────────────
@@ -463,8 +503,7 @@ IRONEOF
     ok "Flatpak: up to date"
 
     # ONLY install missing flatpaks on first run (when not yet marked installed)
-    if ! is_installed "flatpak-packages"; then
-        log "--- Flatpak (first run - installing missing packages) ---"
+    log "--- Flatpak (checking all packages) ---"
         if ! flatpak list --user --app 2>/dev/null | grep -q "com.bitwarden.desktop"; then
             log "Installing Bitwarden..."
             flatpak install --user -y flathub com.bitwarden.desktop 2>&1 \
@@ -503,10 +542,6 @@ IRONEOF
                 fi
             done
         fi
-        mark_installed "flatpak-packages"
-    else
-        ok "Flatpak: packages already installed (use --force to reinstall)"
-    fi
 
     # Set XDG default applications
     if [[ -x /etc/profile.d/niello-defaults.sh ]]; then

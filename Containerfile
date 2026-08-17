@@ -458,6 +458,7 @@ RUN chmod +x /etc/profile.d/niello-defaults.sh
 
 RUN mkdir -p /etc/skel/.config/systemd/user /etc/skel/.local/bin
 COPY config/systemd/niello-init.service /etc/skel/.config/systemd/user/niello-init.service
+COPY config/systemd/user/niello-init.timer /etc/skel/.config/systemd/user/niello-init.timer
 COPY config/systemd/ollama.service /etc/skel/.config/systemd/user/ollama.service
 COPY config/systemd/user/niello-keyring.service /etc/skel/.config/systemd/user/niello-keyring.service
 COPY config/cac/cac-setup /etc/skel/.local/bin/cac-setup

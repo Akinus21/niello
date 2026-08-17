@@ -1,5 +1,24 @@
 FROM quay.io/fedora/fedora-bootc:44
 
+# ══════════════════════════════════════════════════════════════
+# KERNEL PIN — test/workaround for iwlwifi-so-a0-gf-a0-89 firmware
+# failing to load ("no suitable firmware found") on kernel 7.1.8.
+# Confirmed working on the identical chip (Intel AX211) under kernel
+# 7.1.3-200.fc44 on a Bluefin install on the same hardware. Every other
+# variable (file content, path, SELinux, lockdown, Secure Boot, initramfs
+# timing, compression format) has been individually ruled out via live
+# testing — kernel version is the one remaining difference. This pin may
+# stop working once Fedora's mirrors prune the older build; if the exact
+# install below 404s, check `dnf list --showduplicates kernel` for
+# whatever older NVRAs are still available and adjust the version string.
+RUN dnf install -y --allowerasing \
+    kernel-7.1.3-200.fc44.x86_64 \
+    kernel-core-7.1.3-200.fc44.x86_64 \
+    kernel-modules-7.1.3-200.fc44.x86_64 \
+    kernel-modules-core-7.1.3-200.fc44.x86_64 \
+    kernel-modules-extra-7.1.3-200.fc44.x86_64 \
+    || echo "WARNING: kernel 7.1.3-200.fc44 unavailable (likely pruned from mirrors) — staying on base image kernel, iwlwifi firmware issue will persist"
+
 # ── Container Registry Policy ─────────────────────────────────
 COPY config/containers/policy.json /etc/containers/policy.json
 

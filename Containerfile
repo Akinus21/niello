@@ -103,13 +103,19 @@ RUN dnf install -y \
     irqbalance
 
 # ── Direct firmware fetch for iwlwifi-so-a0-gf-a0 (Intel Wi-Fi 7 BE200)
-# Files are in intel/iwlwifi/ subdirectory, not firmware root ───────────
+# linux-firmware package does not ship this chip family at all (confirmed
+# empty on live system) — files are in intel/iwlwifi/ subdirectory. Fetched
+# from upstream as plain/uncompressed; Fedora's actual packaged firmware
+# ships everything .xz-compressed (confirmed on a working Bluefin install
+# with the same chip) — compress here to match exactly what a real,
+# working Fedora firmware package produces.
 RUN mkdir -p /usr/lib/firmware/intel/iwlwifi && \
     curl -fsSL -o /usr/lib/firmware/intel/iwlwifi/iwlwifi-so-a0-gf-a0-89.ucode \
-    "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/intel/iwlwifi/iwlwifi-so-a0-gf-a0-89.ucode"
+    "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/intel/iwlwifi/iwlwifi-so-a0-gf-a0-89.ucode" && \
+    xz -9 -f /usr/lib/firmware/intel/iwlwifi/iwlwifi-so-a0-gf-a0-89.ucode
 
-RUN test -f /usr/lib/firmware/intel/iwlwifi/iwlwifi-so-a0-gf-a0-89.ucode || \
-    (echo "FATAL: iwlwifi firmware missing after fetch" && exit 1)
+RUN test -f /usr/lib/firmware/intel/iwlwifi/iwlwifi-so-a0-gf-a0-89.ucode.xz || \
+    (echo "FATAL: iwlwifi firmware missing after fetch/compress" && exit 1)
 
 # Ensure network kernel modules are loaded at boot
 RUN echo 'iwlwifi' >> /etc/modules-load.d/niello-networking.conf && \
@@ -501,7 +507,10 @@ COPY config/systemd/user/niello-udiskie.service /etc/systemd/user/
 # nirinit) don't get correct SELinux contexts the way dnf-installed files
 # do. Relabel explicitly so they aren't silently denied under enforcing.
 # ══════════════════════════════════════════════════════════════
-RUN restorecon -Rv /usr/lib/firmware/intel /usr/local/bin 2>/dev/null || true
+RUN command -v semanage >/dev/null 2>&1 && \
+    semanage fcontext -a -t firmware_t '/usr/lib/firmware/intel(/.*)?' 2>/dev/null; \
+    restorecon -Rv /usr/lib/firmware/intel /usr/local/bin 2>/dev/null; \
+    chcon -R -t firmware_t /usr/lib/firmware/intel 2>/dev/null || true
 
 # ── Cleanup ─────────────────────────────────────────────────
 RUN dnf clean all && rm -rf /var/cache/dnf/*

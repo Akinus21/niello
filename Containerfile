@@ -488,47 +488,10 @@ RUN if [ "$GAMING" = "true" ]; then \
         fi; \
     fi
 
-# ══════════════════════════════════════════════════════════════
-# CORTEN — Rust-based tag filesystem (file manager backend; yazi
-# remains the file manager frontend). Built from source since
-# Corten isn't published to any package registry.
-#
-# - Single binary named `corten` (default src/main.rs, not a workspace)
-# - `ninep` feature is optional/non-default but required for Corten's
-#   core 9P mount capability — must be built explicitly
-# - rusqlite uses the `bundled` feature (compiles its own SQLite) —
-#   no sqlite-devel needed
-# - Mounting shells out to the kernel's built-in 9p client (`mount -t
-#   9p`), not FUSE — no fuse3/fuse3-devel needed either
-# ══════════════════════════════════════════════════════════════
-# ══════════════════════════════════════════════════════════════
-# HOMEBREW — installed here since it's needed for Corten below, and
-# referenced by the brew-update.timer unit configured earlier.
-# ══════════════════════════════════════════════════════════════
-RUN dnf install -y --skip-broken procps-ng file
-
-# /root is a symlink to /var/roothome in this ostree-based image, and its
-# target doesn't exist as a populated directory at build time — anything
-# that tries to write under $HOME (git config, brew's cache, etc.) fails
-# with ENOENT/EEXIST depending on how it touches the path. Create the real
-# target once and point HOME at it for the remainder of the build.
-RUN mkdir -p /var/roothome
-ENV HOME=/var/roothome
-
-RUN git config --global --add safe.directory '*' && \
-    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
-
-# ══════════════════════════════════════════════════════════════
-# CORTEN — Rust-based tag filesystem (file manager backend; yazi
-# remains the file manager frontend). Installed via your Forgejo
-# Homebrew tap rather than built from source in-image — much more
-# reliable than fighting cargo's cache-directory behavior on every
-# build, and matches how akclip/corten releases are already shipped.
-# ══════════════════════════════════════════════════════════════
-RUN brew tap akinus/akinus21-forge https://forge.akinus21.com/akinus/homebrew-akinus21-forge && \
-    brew install akinus/akinus21-forge/corten
+# Corten is installed at first login via niello-init (brew_ensure "corten"),
+# not baked into the image — Homebrew categorically refuses to run as root,
+# and building it here duplicates what niello-init already does as the
+# real logged-in user with a real $HOME. See niello-init's Homebrew section.
 
 # ── Copy udiskie user service ──────────────────────────────────────
 COPY config/systemd/user/niello-udiskie.service /etc/systemd/user/

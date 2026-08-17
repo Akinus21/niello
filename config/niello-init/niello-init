@@ -108,6 +108,35 @@ sync_skel() {
 # ── Homebrew helpers ─────────────────────────────────────────────────────────
 require_brew() { command -v brew &>/dev/null; }
 
+# Bootstrap Homebrew itself if it isn't present yet. Safe to call every run —
+# no-ops instantly once brew exists. Runs as whatever user niello-init is
+# already running as (a real logged-in user, never root), so this doesn't hit
+# Homebrew's "don't run as root" restriction the way installing it at image
+# build time did.
+bootstrap_brew() {
+    if require_brew; then
+        return 0
+    fi
+    log "Homebrew: not found — bootstrapping..."
+    if [[ "$(id -u)" -eq 0 ]]; then
+        warn "Homebrew: refusing to install as root — skipping (this should only run as a normal user)"
+        return 1
+    fi
+    if NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" 2>>"$NIELLO_LOG"; then
+        if [[ -d "/home/linuxbrew/.linuxbrew/bin" ]]; then
+            export PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"
+        elif [[ -d "$HOME/.linuxbrew/bin" ]]; then
+            export PATH="$HOME/.linuxbrew/bin:$PATH"
+        fi
+        if require_brew; then
+            ok "Homebrew: installed"
+            return 0
+        fi
+    fi
+    warn "Homebrew: bootstrap failed — brew packages will be skipped this run"
+    return 1
+}
+
 brew_ensure() {
     local pkg="$1"; local flag="${2:-}"
     if [[ "$flag" == "--cask" ]]; then
@@ -264,6 +293,7 @@ main() {
 
     # ── 4. Homebrew packages ────────────────────────────────────────────────
     log "--- Homebrew ---"
+    bootstrap_brew
     if ! require_brew; then
         warn "Homebrew not found — skipping brew packages"
     else
@@ -275,13 +305,14 @@ main() {
         # ONLY install missing packages on first run (when not yet marked installed)
         if ! is_installed "homebrew-packages"; then
             log "--- Homebrew (first run - installing missing packages) ---"
-            brew tap Akinus21/homebrew-tap 2>/dev/null || warn "brew: tap Akinus21/homebrew-tap failed"
+            brew tap akinus/akinus21-forge https://forge.akinus21.com/akinus/homebrew-akinus21-forge \
+                2>/dev/null || warn "brew: tap akinus/akinus21-forge failed"
             for pkg in lazygit git-delta gh gitleaks; do brew_ensure "$pkg"; done
             for pkg in atuin tmux tldr; do brew_ensure "$pkg"; done
             for pkg in jq yq xh; do brew_ensure "$pkg"; done
             for pkg in trivy grype; do brew_ensure "$pkg"; done
             for pkg in yazi duf dust age; do brew_ensure "$pkg"; done
-            brew_ensure "corten"
+            brew_ensure "akinus/akinus21-forge/corten"
             brew_ensure "bitwarden-cli"
             brew_ensure "iron"
             # ── Iron browser .desktop ─────────────────────────────────────────────

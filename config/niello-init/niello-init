@@ -190,16 +190,42 @@ main() {
     fi
     echo $$ > "$LOCK_FILE"
 
+    # ── Detect an OS image switch (e.g. bootc switch) ────────────────────────
+    # $HOME persists across deployments, but /usr/share/niello/build-id is
+    # baked fresh into every image build. If it differs from what we saw
+    # last time, the OS underneath changed — force a full run regardless of
+    # the sync-interval skip below, since bootstrap steps (Homebrew, etc.)
+    # need to run again on the new image even if $HOME looks "recently synced".
+    IMAGE_BUILD_ID=""
+    if [[ -f /usr/share/niello/build-id ]]; then
+        IMAGE_BUILD_ID=$(cat /usr/share/niello/build-id 2>/dev/null)
+    fi
+    STORED_BUILD_ID_FILE="$NIELLO_STATE_DIR/.image-build-id"
+    STORED_BUILD_ID=""
+    if [[ -f "$STORED_BUILD_ID_FILE" ]]; then
+        STORED_BUILD_ID=$(cat "$STORED_BUILD_ID_FILE" 2>/dev/null)
+    fi
+    IMAGE_CHANGED=false
+    if [[ -n "$IMAGE_BUILD_ID" ]] && [[ "$IMAGE_BUILD_ID" != "$STORED_BUILD_ID" ]]; then
+        IMAGE_CHANGED=true
+    fi
+    if [[ -n "$IMAGE_BUILD_ID" ]]; then
+        mkdir -p "$NIELLO_STATE_DIR"
+        echo "$IMAGE_BUILD_ID" > "$STORED_BUILD_ID_FILE"
+    fi
+
     # ── Skip if synced recently ────────────────────────────────────────────────
-    if [[ -f "$SYNC_MARKER" ]] && [[ "$FORCE_INSTALL" != "true" ]]; then
+    if [[ -f "$SYNC_MARKER" ]] && [[ "$FORCE_INSTALL" != "true" ]] && [[ "$IMAGE_CHANGED" != "true" ]]; then
         local last_sync age
         last_sync=$(get_version "last_sync" || echo "0")
         age=$(( $(date +%s) - last_sync ))
         if [[ "$age" -lt "$SYNC_INTERVAL" ]]; then
-            echo "billet-init: skipping — synced ${age}s ago (interval=${SYNC_INTERVAL}s)"
+            echo "niello-init: skipping — synced ${age}s ago (interval=${SYNC_INTERVAL}s)"
             rm -f "$LOCK_FILE"
             return 0
         fi
+    elif [[ "$IMAGE_CHANGED" == "true" ]]; then
+        echo "niello-init: OS image changed since last run — forcing full sync"
     fi
 
     # Remove strict error-exit for the background run so one failure doesn't kill everything
@@ -301,6 +327,27 @@ main() {
         log "--- Homebrew (updating) ---"
         brew update 2>/dev/null && brew upgrade 2>/dev/null || true
         ok "Homebrew: up to date"
+
+        # ── Core component health check — runs EVERY login, independent of
+        # the first-run install gate below. brew upgrade above already keeps
+        # these current if present; this catches the case where one of them
+        # is missing entirely (e.g. removed, corrupted, never installed) and
+        # self-heals it without waiting for a fresh first-run.
+        log "--- Core components (Corten, Iron) ---"
+        if brew list --formula "akinus/akinus21-forge/corten" &>/dev/null; then
+            ok "Corten: present ($(corten --version 2>/dev/null || echo 'version unknown'))"
+        else
+            warn "Corten: missing — reinstalling..."
+            brew tap akinus/akinus21-forge https://forge.akinus21.com/akinus/homebrew-akinus21-forge \
+                2>/dev/null || warn "brew: tap akinus/akinus21-forge failed"
+            brew_ensure "akinus/akinus21-forge/corten"
+        fi
+        if brew list --formula "iron" &>/dev/null; then
+            ok "Iron: present ($(iron --version 2>/dev/null || echo 'version unknown'))"
+        else
+            warn "Iron: missing — reinstalling..."
+            brew_ensure "iron"
+        fi
 
         # ONLY install missing packages on first run (when not yet marked installed)
         if ! is_installed "homebrew-packages"; then

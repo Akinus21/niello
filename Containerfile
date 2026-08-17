@@ -20,6 +20,14 @@ RUN dnf install -y --setopt=retries=5 --setopt=timeout=120 --disablerepo=fedora-
 
 # ── Metadata ────────────────────────────────────────────────
 LABEL org.opencontainers.image.title="Niello"
+
+# Build-id stamp: lets niello-init detect that the underlying OS image
+# changed (e.g. via `bootc switch`), since $HOME persists across
+# deployments but this file lives in /usr and is fresh every build.
+# Without this, niello-init's sync-interval skip would see a recent
+# marker in $HOME from the PREVIOUS deployment and never run at all
+# after switching images.
+RUN mkdir -p /usr/share/niello && date -u +%Y%m%d%H%M%S%N > /usr/share/niello/build-id
 LABEL org.opencontainers.image.description="Immutable Fedora Atomic — Niri + Noctalia + Rust toolchain"
 LABEL org.opencontainers.image.source="https://github.com/Akinus21/niello"
 LABEL org.opencontainers.image.vendor="akinus"

@@ -507,8 +507,15 @@ RUN if [ "$GAMING" = "true" ]; then \
 # ══════════════════════════════════════════════════════════════
 RUN dnf install -y --skip-broken procps-ng file
 
-RUN mkdir -p /root && touch /root/.gitconfig && \
-    git config --global --add safe.directory '*' && \
+# /root is a symlink to /var/roothome in this ostree-based image, and its
+# target doesn't exist as a populated directory at build time — anything
+# that tries to write under $HOME (git config, brew's cache, etc.) fails
+# with ENOENT/EEXIST depending on how it touches the path. Create the real
+# target once and point HOME at it for the remainder of the build.
+RUN mkdir -p /var/roothome
+ENV HOME=/var/roothome
+
+RUN git config --global --add safe.directory '*' && \
     NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"

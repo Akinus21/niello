@@ -507,7 +507,8 @@ RUN if [ "$GAMING" = "true" ]; then \
 # ══════════════════════════════════════════════════════════════
 RUN dnf install -y --skip-broken procps-ng file
 
-RUN git config --global --add safe.directory '*' && \
+RUN mkdir -p /root && touch /root/.gitconfig && \
+    git config --global --add safe.directory '*' && \
     NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"

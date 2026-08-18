@@ -36,6 +36,12 @@ LABEL org.opencontainers.image.vendor="akinus"
 # CORE SYSTEM ESSENTIALS — guaranteed present, not assumed from base image
 # ══════════════════════════════════════════════════════════════
 
+# Locale data — without this, LANG/LC_* being set to en_US.UTF-8 (or
+# similar) with no matching locale actually generated produces
+# "Cannot set LC_* to default locale" warnings from every locale-aware
+# tool (Homebrew, git, etc.) on this minimal base image.
+RUN dnf install -y glibc-langpack-en
+
 # sudo — explicitly installed and wheel group granted, rather than trusting
 # the base image already has this configured correctly.
 RUN dnf install -y sudo && \

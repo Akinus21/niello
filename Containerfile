@@ -504,8 +504,14 @@ RUN mkdir -p /usr/local/bin && \
     install -m 755 /tmp/niello-init /usr/local/bin/niello-init && \
     rm -f /tmp/niello-init
 
-RUN echo '[[ -x /usr/local/bin/niello-init ]] && /usr/local/bin/niello-init' >> /etc/zshenv
-RUN echo '[[ -x /usr/local/bin/niello-init ]] && /usr/local/bin/niello-init' >> /etc/skel/.zshrc
+# niello-init is triggered via niello-init.service (login) and
+# niello-init.timer (midnight nightly) — see below. Previously also
+# triggered from /etc/zshenv and .zshrc, but zshenv fires on EVERY zsh
+# invocation (every subshell, command substitution, prompt-theme helper —
+# not just interactive logins), which caused many overlapping concurrent
+# runs racing on a non-atomic lock check and at least one observed
+# "Argument list too long" crash. Removed in favor of the systemd triggers
+# only, which fire at controlled, predictable points.
 
 COPY config/profile.d/PS1-fix.sh /etc/profile.d/PS1-fix.sh
 RUN chmod +x /etc/profile.d/PS1-fix.sh

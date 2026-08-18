@@ -1,24 +1,5 @@
 FROM quay.io/fedora/fedora-bootc:44
 
-# ══════════════════════════════════════════════════════════════
-# KERNEL PIN — test/workaround for iwlwifi-so-a0-gf-a0-89 firmware
-# failing to load ("no suitable firmware found") on kernel 7.1.8.
-# Confirmed working on the identical chip (Intel AX211) under kernel
-# 7.1.3-200.fc44 on a Bluefin install on the same hardware. Every other
-# variable (file content, path, SELinux, lockdown, Secure Boot, initramfs
-# timing, compression format) has been individually ruled out via live
-# testing — kernel version is the one remaining difference. This pin may
-# stop working once Fedora's mirrors prune the older build; if the exact
-# install below 404s, check `dnf list --showduplicates kernel` for
-# whatever older NVRAs are still available and adjust the version string.
-RUN dnf install -y --allowerasing \
-    kernel-7.1.3-200.fc44.x86_64 \
-    kernel-core-7.1.3-200.fc44.x86_64 \
-    kernel-modules-7.1.3-200.fc44.x86_64 \
-    kernel-modules-core-7.1.3-200.fc44.x86_64 \
-    kernel-modules-extra-7.1.3-200.fc44.x86_64 \
-    || echo "WARNING: kernel 7.1.3-200.fc44 unavailable (likely pruned from mirrors) — staying on base image kernel, iwlwifi firmware issue will persist"
-
 # ── Container Registry Policy ─────────────────────────────────
 COPY config/containers/policy.json /etc/containers/policy.json
 
@@ -136,18 +117,75 @@ RUN dnf install -y \
 # ships everything .xz-compressed (confirmed on a working Bluefin install
 # with the same chip) — compress here to match exactly what a real,
 # working Fedora firmware package produces.
-RUN mkdir -p /usr/lib/firmware/intel/iwlwifi && \
-    curl -fsSL -o /usr/lib/firmware/intel/iwlwifi/iwlwifi-so-a0-gf-a0-89.ucode \
-    "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/intel/iwlwifi/iwlwifi-so-a0-gf-a0-89.ucode" && \
-    xz -9 -f /usr/lib/firmware/intel/iwlwifi/iwlwifi-so-a0-gf-a0-89.ucode
-
-RUN test -f /usr/lib/firmware/intel/iwlwifi/iwlwifi-so-a0-gf-a0-89.ucode.xz || \
-    (echo "FATAL: iwlwifi firmware missing after fetch/compress" && exit 1)
+# ══════════════════════════════════════════════════════════════
+# WIRELESS/WWAN FIRMWARE — Fedora splits these OUT of the base
+# linux-firmware package into separate sub-packages. The iwlwifi ucode
+# files (including this exact chip's iwlwifi-so-a0-gf-a0-* family) live
+# in iwlwifi-mvm-firmware/iwlwifi-mld-firmware, not linux-firmware itself
+# — confirmed by diffing package lists against a known-working Bluefin
+# install on identical hardware. wireless-regdb (regulatory.db) is
+# likewise a separate package. Installing all of them rather than
+# guessing exactly one, since they're small and this eliminates the
+# ambiguity around which generation (mvm vs mld) this chip needs.
+# ══════════════════════════════════════════════════════════════
+RUN dnf install -y --skip-broken \
+    iwlwifi-dvm-firmware \
+    iwlwifi-mvm-firmware \
+    iwlwifi-mld-firmware \
+    iwlegacy-firmware \
+    wireless-regdb
 
 # Ensure network kernel modules are loaded at boot
 RUN echo 'iwlwifi' >> /etc/modules-load.d/niello-networking.conf && \
     echo 'iwlmvm' >> /etc/modules-load.d/niello-networking.conf && \
     echo 'btusb' >> /etc/modules-load.d/niello-networking.conf
+
+# ══════════════════════════════════════════════════════════════
+# HARDWARE / NETWORK / MEDIA ENABLEMENT — found missing via direct
+# package-list diff against a working Bluefin install on the same
+# hardware. Curated: excludes anything GNOME/KDE-specific (Bluefin's own
+# desktop-shell dependency tree) and systemd-networkd (would conflict
+# with NetworkManager, which Niello already uses exclusively).
+# ══════════════════════════════════════════════════════════════
+RUN dnf install -y --skip-broken \
+    zenity \
+    plymouth \
+    ModemManager \
+    NetworkManager-bluetooth \
+    NetworkManager-wifi \
+    NetworkManager-wwan \
+    NetworkManager-openvpn \
+    NetworkManager-openconnect \
+    NetworkManager-ssh \
+    NetworkManager-vpnc \
+    alsa-utils \
+    alsa-ucm \
+    avahi-tools \
+    bluez-obexd \
+    bolt \
+    cups \
+    cups-filters \
+    cups-browsed \
+    pciutils \
+    geoclue2-libs \
+    switcheroo-control \
+    pipewire-utils \
+    pipewire-gstreamer \
+    ImageMagick \
+    LibRaw \
+    SDL3_image \
+    SDL3_ttf \
+    ffmpegthumbnailer \
+    gstreamer1-plugins-good \
+    gstreamer1-plugins-bad-free \
+    gstreamer1-plugins-ugly-free \
+    gstreamer1-plugin-libav \
+    gstreamer1-plugin-dav1d \
+    autoconf \
+    automake \
+    bison \
+    flex \
+    libtool
 
 # ══════════════════════════════════════════════════════════════
 # XDG DESKTOP PORTAL — required for Flatpak sandboxing, screen share
@@ -535,10 +573,10 @@ COPY config/systemd/user/niello-udiskie.service /etc/systemd/user/
 # nirinit) don't get correct SELinux contexts the way dnf-installed files
 # do. Relabel explicitly so they aren't silently denied under enforcing.
 # ══════════════════════════════════════════════════════════════
-RUN command -v semanage >/dev/null 2>&1 && \
-    semanage fcontext -a -t firmware_t '/usr/lib/firmware/intel(/.*)?' 2>/dev/null; \
-    restorecon -Rv /usr/lib/firmware/intel /usr/local/bin 2>/dev/null; \
-    chcon -R -t firmware_t /usr/lib/firmware/intel 2>/dev/null || true
+# Manually-placed binaries (yazi, etc.) still need a relabel pass — RPM-
+# installed files (including the firmware packages above) get correct
+# SELinux contexts automatically and don't need this.
+RUN restorecon -Rv /usr/local/bin 2>/dev/null || true
 
 # ── Cleanup ─────────────────────────────────────────────────
 RUN dnf clean all && rm -rf /var/cache/dnf/*

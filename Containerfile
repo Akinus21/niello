@@ -522,6 +522,18 @@ RUN chmod +x /etc/profile.d/niello-defaults.sh
 RUN mkdir -p /etc/skel/.config/systemd/user /etc/skel/.local/bin
 COPY config/systemd/niello-init.service /etc/skel/.config/systemd/user/niello-init.service
 COPY config/systemd/user/niello-init.timer /etc/skel/.config/systemd/user/niello-init.timer
+
+# Bake the enablement directly into skel — this is what `systemctl --user
+# enable` actually does under the hood (create these symlinks). Without
+# this, nothing starts niello-init.service on its own on a fresh account,
+# since the self-enable logic lives inside the script itself, which
+# nothing then triggers in the first place (chicken-and-egg).
+RUN mkdir -p /etc/skel/.config/systemd/user/default.target.wants \
+             /etc/skel/.config/systemd/user/timers.target.wants && \
+    ln -sf ../niello-init.service \
+        /etc/skel/.config/systemd/user/default.target.wants/niello-init.service && \
+    ln -sf ../niello-init.timer \
+        /etc/skel/.config/systemd/user/timers.target.wants/niello-init.timer
 COPY config/systemd/ollama.service /etc/skel/.config/systemd/user/ollama.service
 COPY config/systemd/user/niello-keyring.service /etc/skel/.config/systemd/user/niello-keyring.service
 COPY config/cac/cac-setup /etc/skel/.local/bin/cac-setup

@@ -225,6 +225,15 @@ RUN curl -fsSL -o /tmp/yazi.zip \
     rm -rf /tmp/yazi.zip /tmp/yazi-extract
 
 # ══════════════════════════════════════════════════════════════
+# GUI FILE MANAGER — SpaceFM (https://github.com/IgnorantGuru/spacefm),
+# trying alongside yazi. NOTE: upstream has been unmaintained since ~2016
+# — --skip-broken so the build doesn't hard-fail if Fedora 44 has dropped
+# the package. Confirm after build whether this actually installed
+# (`rpm -q spacefm`) rather than assuming --skip-broken silently worked.
+# ══════════════════════════════════════════════════════════════
+RUN dnf install -y --skip-broken spacefm
+
+# ══════════════════════════════════════════════════════════════
 # BACKUP BROWSER — until Iron is complete
 # ══════════════════════════════════════════════════════════════
 RUN dnf install -y qutebrowser

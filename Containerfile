@@ -527,8 +527,12 @@ COPY config/systemd/user/niello-keyring.service /etc/skel/.config/systemd/user/n
 COPY config/cac/cac-setup /etc/skel/.local/bin/cac-setup
 RUN chmod +x /etc/skel/.local/bin/cac-setup
 
-COPY config/systemd/niello-init-boot.service /etc/systemd/system/niello-init-boot.service
-RUN systemctl enable niello-init-boot 2>/dev/null || true
+# niello-init-boot.service deliberately removed — it ran niello-init as
+# root, before display-manager.service (before any graphical session or
+# XDG_RUNTIME_DIR setup), via fragile nested bash -c string interpolation,
+# as a third uncoordinated trigger alongside niello-init.service and
+# niello-init.timer. Fully redundant with those two, and the likely
+# source of an observed "Argument list too long" crash.
 
 # ── niri session + wayland sessions ──────────────────────────
 RUN mkdir -p /usr/share/wayland-sessions

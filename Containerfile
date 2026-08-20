@@ -234,6 +234,23 @@ RUN curl -fsSL -o /tmp/yazi.zip \
 RUN dnf install -y --skip-broken spacefm
 
 # ══════════════════════════════════════════════════════════════
+# WEBKITGTK 6.0 — required by Iron (GTK4-native browser, built
+# against the webkit6 crate / webkitgtk-6.0 API). This is a
+# SEPARATE Fedora package from webkit2gtk4.1 (the GTK3-era API,
+# already pulled in transitively by other packages) — Iron will
+# fail at launch with "libwebkitgtk-6.0.so.4: cannot open shared
+# object file" if only the 4.1 package is present.
+# Baked into the base image here rather than left to rpm-ostree
+# layering on the live system: layered packages require a reboot
+# to take effect and are easy to forget/lose track of on an
+# atomic system. Deliberately NOT --skip-broken — this is a hard
+# requirement for Iron, not an optional extra, so the build
+# should fail loudly if Fedora 44 ever renames/drops the package
+# rather than silently shipping an image where Iron can't run.
+# ══════════════════════════════════════════════════════════════
+RUN dnf install -y webkitgtk6.0
+
+# ══════════════════════════════════════════════════════════════
 # BACKUP BROWSER — until Iron is complete
 # ══════════════════════════════════════════════════════════════
 RUN dnf install -y qutebrowser

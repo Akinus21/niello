@@ -102,7 +102,9 @@ RUN dnf install -y \
     fuzzel \
     xdg-user-dirs \
     xdg-utils \
-    newt
+    newt \
+    # xremap — key remapping tool for Linux (https://github.com/xremap/xremap)
+    xremap
 
 # ══════════════════════════════════════════════════════════════
 # NETWORKING + BLUETOOTH — Noctalia is UI-only, needs real daemons

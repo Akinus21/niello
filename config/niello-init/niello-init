@@ -190,10 +190,6 @@ main() {
     fi
     echo $$ > "$LOCK_FILE"
 
-    # ── OS image switch tracking (informational — logged, not gating) ───────
-    # $HOME persists across deployments, but /usr/share/niello/build-id is
-    # baked fresh into every image build, so this tells us if the OS
-    # underneath changed since the last run.
     IMAGE_BUILD_ID=""
     if [[ -f /usr/share/niello/build-id ]]; then
         IMAGE_BUILD_ID=$(cat /usr/share/niello/build-id 2>/dev/null)
@@ -211,12 +207,6 @@ main() {
         echo "$IMAGE_BUILD_ID" > "$STORED_BUILD_ID_FILE"
     fi
 
-    # No sync-interval skip: this runs its full dependency-check-and-update
-    # pass every time it's invoked — on login (niello-init.service) and
-    # nightly at midnight (niello-init.timer). Cadence is controlled by
-    # those two triggers, not by a wall-clock guard inside the script.
-
-    # Remove strict error-exit for the background run so one failure doesn't kill everything
     set +e
 
     exec >> "$NIELLO_LOG" 2>&1
@@ -230,13 +220,11 @@ main() {
 
     local errors=0
 
-    # ── Always: set up dirs and cleanup deprecated items ─────────────────────
     mkdir -p "$HOME/.config/systemd/user" "$HOME/.local/bin" "$HOME/.config/autostart"
     mkdir -p "$HOME/.local/share/applications"
     systemctl --user daemon-reload 2>/dev/null || true
     systemctl --user reset-failed 2>/dev/null || true
 
-    # Cleanup: old noctalia-gtk service (deprecated)
     if systemctl --user is-enabled noctalia-gtk 2>/dev/null; then
         systemctl --user disable --now noctalia-gtk 2>/dev/null || true
         warn "Cleanup: old noctalia-gtk service disabled"
@@ -244,7 +232,6 @@ main() {
     rm -f "$HOME/.config/systemd/user/noctalia-gtk.service"
     rm -f "$HOME/.config/systemd/user/noctalia-gtk.service.bak"
 
-    # Enable udiskie for USB automounting
     if command -v udiskie &>/dev/null; then
         mkdir -p "$HOME/.config/systemd/user"
         ln -sf /etc/systemd/user/niello-udiskie.service \
@@ -253,18 +240,14 @@ main() {
         systemctl --user enable --now niello-udiskie 2>/dev/null || true
     fi
 
-    # Cleanup: stray Noctalia colors at root level
     rm -f "$HOME/.config/noctalia/purple-haze.json"
     rm -f "$HOME/.config/noctalia/midnight-cherry.json"
     rm -f "$HOME/.config/noctalia/eldritch.json"
 
-    # Cleanup: old AkTags desktop files from old install paths
     rm -f "$HOME/.config/autostart/aktags.desktop.bak"
 
-    # Cleanup: temp files from this user's state dir
     rm -rf "$NIELLO_STATE_DIR/tmp" 2>/dev/null || true
 
-    # ── Always: sync niello-init systemd service ─────────────────────────────
     sync_skel ".config/systemd/user/niello-init.service"
     if [[ -f /etc/skel/.config/systemd/user/niello-init.service ]] && \
        [[ ! -f "$HOME/.config/systemd/user/niello-init.service" ]]; then
@@ -293,7 +276,6 @@ main() {
             || warn "niello-init.timer: enable failed"
     fi
 
-    # ── Always: sync + enable GNOME keyring ─────────────────────────────────
     sync_skel ".config/systemd/user/niello-keyring.service"
     if ! systemctl --user is-enabled niello-keyring 2>/dev/null; then
         systemctl --user enable niello-keyring 2>/dev/null \
@@ -301,7 +283,6 @@ main() {
             || warn "niello-keyring.service: enable failed"
     fi
 
-    # ── Always: show GUI status box on sync (if zenity available) ───────────
     local ZENITY_PID=""
     if require_zenity; then
         zenity --info --title="Niello Setup" --text="Syncing Niello...\n\nThis window will close when complete." --no-wrap --width=400 &
@@ -309,33 +290,23 @@ main() {
         disown $ZENITY_PID 2>/dev/null || true
     fi
 
-# ── 2. GTK themes (Eldritch) ─────────────────────────────────────────────
     log "--- GTK themes (Eldritch) ---"
     sync_skel ".config/gtk-3.0/settings.ini"
     sync_skel ".config/gtk-4.0/settings.ini"
 
-    # ── 3. Niri config ─────────────────────────────────────────────────────
-    # Niri config is synced from skel so users get the latest layout/keybinds
     sync_skel ".config/niri/config.kdl"
     sync_skel ".config/niri/noctalia.kdl"
 
-    # ── 4. Homebrew packages ────────────────────────────────────────────────
     log "--- Homebrew ---"
     bootstrap_brew
     if ! require_brew; then
         warn "Homebrew not found — skipping brew packages"
     else
-        # ALWAYS run brew update && brew upgrade to get latest packages
         log "--- Homebrew (updating) ---"
         brew update 2>/dev/null && brew upgrade 2>/dev/null || true
         ok "Homebrew: up to date"
 
-        # ── Core component health check — runs EVERY login, independent of
-        # the first-run install gate below. brew upgrade above already keeps
-        # these current if present; this catches the case where one of them
-        # is missing entirely (e.g. removed, corrupted, never installed) and
-        # self-heals it without waiting for a fresh first-run.
-        log "--- Core components (Corten, Iron) ---"
+        log "--- Core components (Corten, Iron, Anvil, Slag) ---"
         if brew list --formula "akinus/akinus21-forge/corten" &>/dev/null; then
             ok "Corten: present ($(corten --version 2>/dev/null || echo 'version unknown'))"
         else
@@ -350,6 +321,28 @@ main() {
             warn "Iron: missing — reinstalling..."
             brew_ensure "iron"
         fi
+        if brew list --formula "akinus/akinus21-forge/anvil" &>/dev/null; then
+            ok "Anvil: present ($(anvil --version 2>/dev/null || echo 'version unknown'))"
+        else
+            warn "Anvil: missing — reinstalling..."
+            brew tap akinus/akinus21-forge https://forge.akinus21.com/akinus/homebrew-akinus21-forge \
+                2>/dev/null || warn "brew: tap akinus/akinus21-forge failed"
+            brew_ensure "akinus/akinus21-forge/anvil"
+        fi
+        # akclip is being renamed to "Slag" — formula name TBD once the
+        # rename lands in the tap. Checked under both names so this keeps
+        # working through the transition without needing another edit.
+        if brew list --formula "akinus/akinus21-forge/slag" &>/dev/null; then
+            ok "Slag: present ($(slag --version 2>/dev/null || echo 'version unknown'))"
+        elif brew list --formula "akinus/akinus21-forge/akclip" &>/dev/null; then
+            ok "akclip: present ($(akclip --version 2>/dev/null || echo 'version unknown')) — formula not yet renamed to slag"
+        else
+            warn "Slag/akclip: missing — reinstalling..."
+            brew tap akinus/akinus21-forge https://forge.akinus21.com/akinus/homebrew-akinus21-forge \
+                2>/dev/null || warn "brew: tap akinus/akinus21-forge failed"
+            brew_ensure "akinus/akinus21-forge/slag" \
+                || brew_ensure "akinus/akinus21-forge/akclip"
+        fi
 
         log "--- Homebrew (checking all packages) ---"
         brew tap akinus/akinus21-forge https://forge.akinus21.com/akinus/homebrew-akinus21-forge \
@@ -362,13 +355,13 @@ main() {
             brew_ensure "akinus/akinus21-forge/corten"
             brew_ensure "bitwarden-cli"
             brew_ensure "iron"
-            # ── Iron browser .desktop ─────────────────────────────────────────────
+            brew_ensure "akinus/akinus21-forge/anvil"
+            brew_ensure "akinus/akinus21-forge/slag" || brew_ensure "akinus/akinus21-forge/akclip"
             log "--- Iron browser desktop ---"
             local IRON_BIN=""
             for p in "$HOME/.homebrew/bin/iron" "$HOME/.linuxbrew/bin/iron" "/home/linuxbrew/.linuxbrew/bin/iron" "/usr/local/bin/iron"; do
                 [[ -x "$p" ]] && { IRON_BIN="$p"; break; }
             done
-            # Fallback to PATH if direct paths not found
             if [[ -z "$IRON_BIN" ]] && command -v iron >/dev/null 2>&1; then
                 IRON_BIN="$(command -v iron)"
             fi
@@ -400,7 +393,6 @@ IRONEOF
             brew_ensure "font-meslo-lg-nerd-font" --cask
             brew_ensure "aktools"
 
-            # ── AKTools modules ───────────────────────────────────────────────────
             log "--- AKTools modules ---"
             if command -v aktools >/dev/null 2>&1; then
                 log "AKTools: upgrading..."
@@ -418,7 +410,6 @@ IRONEOF
             brew_ensure "akspraypaint"
     fi
 
-    # ── Bluefin CLI tools ───────────────────────────────────────────────────
     log "--- Bluefin CLI ---"
     if command -v ujust >/dev/null 2>&1; then
         log "Running ujust bluefin-cli..."
@@ -429,7 +420,6 @@ IRONEOF
         warn "Bluefin CLI: ujust not found — skipping bluefin-cli"
     fi
 
-    # ── Distrobox containers ──────────────────────────────────────────────
     log "--- Distrobox ---"
     if command -v distrobox >/dev/null 2>&1; then
         DISTROBOX_LIST=$(distrobox list --no-color 2>/dev/null | tail -n +2 | awk -F'|' '{gsub(/ /,"",$2); print $2}')
@@ -448,12 +438,6 @@ IRONEOF
         warn "Distrobox: not installed — skipping"
     fi
 
-    # ── DNF / bootc system update status ────────────────────────────────────
-    # This is an immutable bootc/ostree system — /usr is read-only at runtime,
-    # so real system updates happen via `bootc upgrade` (already handled at
-    # boot by niello-boot-upgrade.service, which creates a new deployment
-    # requiring a reboot to take effect). This section only REPORTS status —
-    # it does not and should not trigger a system upgrade from a login script.
     log "--- System update status (bootc) ---"
     if command -v bootc >/dev/null 2>&1; then
         BOOTC_STATUS=$(bootc status --format json 2>/dev/null)
@@ -473,7 +457,6 @@ IRONEOF
         warn "System update: bootc not found — skipping status check"
     fi
 
-    # ── Ensure Noctalia is reachable ────────────────────────────────────────
     log "--- Noctalia shell ---"
     if ! command -v qs &>/dev/null; then
         warn "Noctalia: qs not in PATH — checking /usr/bin and /usr/local/bin"
@@ -490,19 +473,16 @@ IRONEOF
         ok "Noctalia: present"
     fi
 
-    # ── 5. Flatpak (Bitwarden) ──────────────────────────────────────────────
     log "--- Flatpak ---"
     flatpak remote-add --user --if-not-exists flathub \
         https://dl.flathub.org/repo/flathub.flatpakrepo 2>/dev/null \
         && ok "flathub remote present" \
         || warn "flathub remote-add failed"
 
-    # ALWAYS run flatpak update to keep packages current
     log "--- Flatpak (updating) ---"
     flatpak update --user -y 2>/dev/null || true
     ok "Flatpak: up to date"
 
-    # ONLY install missing flatpaks on first run (when not yet marked installed)
     log "--- Flatpak (checking all packages) ---"
         if ! flatpak list --user --app 2>/dev/null | grep -q "com.bitwarden.desktop"; then
             log "Installing Bitwarden..."
@@ -513,7 +493,6 @@ IRONEOF
             ok "Bitwarden present"
         fi
 
-        # ── OnlyOffice Desktop Editors ─────────────────────────────────────────
         if ! flatpak list --user --app 2>/dev/null | grep -q "org.onlyoffice.desktopeditors"; then
             log "Installing OnlyOffice..."
             flatpak install --user -y flathub org.onlyoffice.desktopeditors 2>&1 \
@@ -523,7 +502,6 @@ IRONEOF
             ok "OnlyOffice present"
         fi
 
-        # ── Gaming flatpaks ────────────────────────────────────────────────────
         if [[ -f /etc/niello-gaming ]]; then
             GAMING_FLATPAKS=(
                 "com.valvesoftware.Steam"
@@ -543,12 +521,10 @@ IRONEOF
             done
         fi
 
-    # Set XDG default applications
     if [[ -x /etc/profile.d/niello-defaults.sh ]]; then
         bash /etc/profile.d/niello-defaults.sh
     fi
 
-    # ── Bitwarden CLI (bw) ──────────────────────────────────────────────────
     log "--- Bitwarden CLI (bw) ---"
     if ! command -v bw &>/dev/null; then
         warn "bw: not found — install with: brew install bitwarden-cli"
@@ -556,11 +532,9 @@ IRONEOF
         ok "bw: present"
     fi
 
-    # ── Gaming (nvidia variant) ──────────────────────────────────────────────
     if [[ -f /etc/niello-gaming ]]; then
         log "--- Gaming setup ---"
 
-        # Add user to gamemode group for performance mode
         if getent group gamemode &>/dev/null; then
             sudo usermod -aG gamemode "$USER" 2>/dev/null \
                 && ok "gamemode: $USER added to group" \
@@ -569,7 +543,6 @@ IRONEOF
             warn "gamemode: group not found"
         fi
 
-        # Gaming flatpaks
         GAMING_FLATPAKS=(
             "com.valvesoftware.Steam"
             "com.github.Matoking.protontricks"
@@ -590,7 +563,6 @@ IRONEOF
         ok "Gaming: not a gaming variant — skipping"
     fi
 
-    # ── 6. CAC setup ─────────────────────────────────────────────────────────
     log "--- CAC setup ---"
     CAC_SETUP="/etc/skel/.local/bin/cac-setup"
     if [[ -x "$CAC_SETUP" ]]; then
@@ -601,11 +573,9 @@ IRONEOF
         warn "cac-setup not found in skel — skipping"
     fi
 
-# ── 7. Ollama ────────────────────────────────────────────────────────────
     log "--- Ollama ---"
     if is_installed "ollama" && [[ "$FORCE_INSTALL" != "true" ]]; then
         log "--- Ollama (updating) ---"
-        # Just ensure it's running, no re-install
         systemctl --user enable --now ollama 2>/dev/null || true
         if pgrep -x "ollama" >/dev/null 2>&1; then
             ok "Ollama: serve already running"
@@ -643,7 +613,6 @@ IRONEOF
     else
         ok "Ollama: enabled"
     fi
-    # Start ollama serve in background directly (faster than waiting for systemd)
     if command -v /usr/local/bin/ollama &>/dev/null; then
         if ! pgrep -x "ollama" >/dev/null 2>&1; then
             mkdir -p "$HOME/.cache/ollama"
@@ -660,13 +629,11 @@ IRONEOF
         fi
     fi
 
-    # ── 8. Zsh config (Powerlevel10k + plugins) ────────────────────────────
     log "--- Zsh config ---"
     sync_skel ".zshrc"
     sync_skel ".p10k.zsh"
     sync_skel "justfile"
 
-    # ── Zsh + Oh-My-Zsh validation ───────────────────────────────────────────
     log "--- Zsh + Oh-My-Zsh ---"
     if ! command -v zsh &>/dev/null; then
         if require_brew; then
@@ -685,13 +652,11 @@ IRONEOF
 
     if is_installed "oh-my-zsh" && [[ "$FORCE_INSTALL" != "true" ]]; then
         log "--- OMZ (updating plugins) ---"
-        # Just git pull in each plugin/theme directory
         for dir in "$OMZ_PLUGINS"/* "$OMZ_THEMES"/*; do
             [[ -d "$dir/.git" ]] && (cd "$dir" && git pull --ff-only 2>/dev/null) || true
         done
         ok "OMZ: up to date"
     else
-        # Check base Oh-My-Zsh first
         if [[ ! -d "$OMZ/.git" ]]; then
             log "OMZ: base directory missing — cloning..."
             git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git "$OMZ" 2>/dev/null \
@@ -727,13 +692,10 @@ IRONEOF
         mark_installed "oh-my-zsh"
     fi
 
-    # ── Noctalia color scheme ───────────────────────────────────────────────
     log "--- Noctalia color scheme ---"
 
-    # Sync noctalia config dir (greeter uses greeter.toml, not CSS templates)
     sync_skel ".config/noctalia"
 
-    # Read active theme from settings.json, default to "Purple Haze" if missing
     local ACTIVE_THEME="Purple Haze"
     local SETTINGS_JSON="$HOME/.config/noctalia/settings.json"
     if [[ -f "$SETTINGS_JSON" ]]; then
@@ -759,7 +721,6 @@ IRONEOF
         warn "Noctalia: ${ACTIVE_THEME} source not in skel"
     fi
 
-    # ── Noctalia plugin repositories ────────────────────────────────────────
     log "--- Noctalia plugin repos ---"
     local SETTINGS_FILE="$HOME/.config/noctalia/settings.json"
     if [[ -f "$SETTINGS_FILE" ]]; then
@@ -785,7 +746,6 @@ with open('$SETTINGS_FILE', 'w') as f:
         warn "Noctalia: settings.json not found"
     fi
 
-    # ── Noctalia wallpaper ────────────────────────────────────────────────────
     log "--- Noctalia wallpaper ---"
     local WALLPAPER_SRC="/etc/skel/.config/noctalia/noctalia_purple_haze.png"
     local WALLPAPER_DEST="$HOME/.config/noctalia/wallpapers/noctalia_purple_haze.png"
@@ -802,7 +762,6 @@ with open('$SETTINGS_FILE', 'w') as f:
         warn "Noctalia: wallpaper source not in skel"
     fi
 
-    # ── Noctalia plugins (Akinus21/noctalia-plugins) ────────────────────────
     log "--- Noctalia plugins ---"
     local PLUGINS_DIR="$HOME/.config/noctalia/plugins"
     local PLUGINS_REPO="https://github.com/Akinus21/noctalia-plugins.git"
@@ -818,7 +777,6 @@ with open('$SETTINGS_FILE', 'w') as f:
                 ok "Noctalia plugin: $plugin (up to date)"
             else
                 log "Noctalia: reinstalling plugin '$plugin'..."
-                # Fallback to fresh clone if git dir missing
                 PLUGIN_TMP=$(mktemp -d)
                 if git clone --filter=blob:none --no-checkout --depth=1 "$PLUGINS_REPO" "$PLUGIN_TMP" 2>/dev/null; then
                     cd "$PLUGIN_TMP" && \
@@ -861,13 +819,9 @@ with open('$SETTINGS_FILE', 'w') as f:
         mark_installed "noctalia-plugins"
     fi
 
-
-
-    # ── Always: ensure all tracked services are running ────────────────────
     log "--- Service health ---"
     systemctl --user start ollama 2>/dev/null || true
 
-    # ── Ensure Noctalia is running ────────────────────────────────────────
     log "--- Noctalia health check ---"
     if pgrep -x "qs" >/dev/null 2>&1 || pgrep -f "noctalia-shell" >/dev/null 2>&1; then
         ok "Noctalia: running"
@@ -887,18 +841,15 @@ with open('$SETTINGS_FILE', 'w') as f:
         fi
     fi
 
-    # Mark sync complete
-    set_version "last_run" "$(date +%s)"  # Always updated, even on failure
+    set_version "last_run" "$(date +%s)"
     touch "$SYNC_MARKER"
     set_version "last_sync" "$(date +%s)"
 
     echo ""
-    # Kill status box
     if [[ -n "$ZENITY_PID" ]] && kill -0 "$ZENITY_PID" 2>/dev/null; then
         kill "$ZENITY_PID" 2>/dev/null || true
     fi
 
-    # Cleanup lock
     rm -f "$LOCK_FILE"
 
     if [[ $errors -gt 0 ]]; then
@@ -907,7 +858,6 @@ with open('$SETTINGS_FILE', 'w') as f:
     else
         ok "niello-init complete"
         if command -v notify-send &>/dev/null; then
-            # Give notification daemon time to be ready, use icon flag
             sleep 2
             notify-send -u normal -a Niello -i niello "Niello Ready" "System sync complete. Log: ~/.local/share/niello/init.log" 2>/dev/null || true
         fi
@@ -915,8 +865,6 @@ with open('$SETTINGS_FILE', 'w') as f:
     log "niello-init: finished (pid $$)"
 }
 
-# If run in the foreground (e.g., from /etc/zshenv or .zshrc), spawn a
-# background subshell so the terminal is never blocked.
 if [[ "${NIELLO_INIT_FOREGROUND:-}" != "1" ]]; then
     (
         NIELLO_INIT_FOREGROUND=1

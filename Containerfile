@@ -103,6 +103,8 @@ RUN dnf install -y \
     xdg-user-dirs \
     xdg-utils \
     newt \
+    # gtk2 — provides libgdk-x11-2.0.so.0 (GTK2 GDK X11 backend)
+    gtk2 \
     # xremap — key remapping tool for Linux (https://github.com/xremap/xremap)
     xremap
 

@@ -371,7 +371,8 @@ RUN dnf install -y \
     dust \
     procs \
     starship \
-    uutils-coreutils
+    uutils-coreutils \
+    vim-common
 
 RUN sed -i 's|^SHELL=.*|SHELL=/bin/zsh|' /etc/default/useradd 2>/dev/null || \
     echo 'SHELL=/bin/zsh' >> /etc/default/useradd

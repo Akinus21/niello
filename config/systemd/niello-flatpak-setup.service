@@ -1,8 +1,8 @@
 [Unit]
 Description=Niello Flatpak Initial Setup (Flathub remote)
-After=niello-networking.service
+After=local-fs.target niello-networking.service
+Requires=local-fs.target
 Before=greetd.service
-DefaultDependencies=no
 
 [Service]
 Type=oneshot

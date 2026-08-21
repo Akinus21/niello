@@ -70,6 +70,16 @@ RUN dnf install -y chrony && \
 RUN dnf install -y firewalld && \
     systemctl enable firewalld
 
+# systemd-remount-fs.service — masked. On bootc/composefs roots, "/" is an
+# overlay mount that doesn't support in-place remount (fsconfig() fails
+# with "No changes allowed in reconfigure"). This unit tries to remount
+# filesystems to match fstab options at boot and is a no-op/failure on
+# this class of system — root mount state is managed by ostree/composefs,
+# not classic fstab remounting. Masking avoids a permanently-failed unit
+# cluttering `systemctl --failed` on every boot for something that was
+# never going to succeed here.
+RUN systemctl mask systemd-remount-fs.service
+
 # ── OS Identity ──────────────────────────────────────────────
 COPY usr/lib/os-release /usr/lib/os-release
 
@@ -105,6 +115,21 @@ RUN dnf install -y \
     xdg-utils \
     newt \
     gtk2
+
+# earlyoom — userspace OOM mitigator, kills the worst offender before the
+# kernel OOM-killer has to step in under memory/swap pressure. Installed
+# above; explicitly enabled here rather than relying on the package's
+# default post-install state, since that's not guaranteed across Fedora
+# packaging changes.
+RUN systemctl enable earlyoom
+
+# ananicy-cpp — auto-renices/ionices known CPU-hog processes (browsers,
+# Electron apps, compilers, etc.) using rule sets, so a single runaway
+# process doesn't peg a core and starve the rest of the (already
+# CPU-constrained) Surface Laptop. Packaged via Terra (Fyra Labs), same
+# repo already added above for noctalia-shell.
+RUN dnf install -y --skip-broken ananicy-cpp ananicy-cpp-rules && \
+    systemctl enable ananicy-cpp
 
 # xremap — key remapping tool for Linux (https://github.com/xremap/xremap).
 # Not packaged for Fedora — it's a Rust project distributed via cargo or

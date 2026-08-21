@@ -85,6 +85,7 @@ RUN dnf install -y --skip-broken --nogpgcheck --repofrompath 'terra,https://repo
      touch /etc/niello-noctalia-missing)
 
 # ── Desktop Stack ────────────────────────────────────────────
+# gtk2 — provides libgdk-x11-2.0.so.0 (GTK2 GDK X11 backend)
 RUN dnf install -y \
     niri \
     alacritty \
@@ -103,10 +104,16 @@ RUN dnf install -y \
     xdg-user-dirs \
     xdg-utils \
     newt \
-    # gtk2 — provides libgdk-x11-2.0.so.0 (GTK2 GDK X11 backend)
-    gtk2 \
-    # xremap — key remapping tool for Linux (https://github.com/xremap/xremap)
-    xremap
+    gtk2
+
+# xremap — key remapping tool for Linux (https://github.com/xremap/xremap).
+# Not packaged for Fedora — it's a Rust project distributed via cargo or
+# prebuilt GitHub release binaries only. Installed here via cargo since a
+# Rust toolchain is expected on this image; swap for a curl'd release
+# binary if that's not baked in yet at this point in the build.
+RUN dnf install -y cargo && \
+    cargo install xremap --locked --root /usr/local && \
+    dnf remove -y cargo || true
 
 # ══════════════════════════════════════════════════════════════
 # NETWORKING + BLUETOOTH — Noctalia is UI-only, needs real daemons

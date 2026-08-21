@@ -133,6 +133,27 @@ RUN systemctl enable earlyoom
 RUN dnf install -y --skip-broken ananicy-cpp cachyos-ananicy-rules && \
     systemctl enable ananicy-cpp
 
+# ══════════════════════════════════════════════════════════════
+# ZRAM SWAP — this system runs with zero physical swap (confirmed via
+# earlyoom logs: "swap total: 0 MiB"), which gave earlyoom no cushion
+# under memory pressure — observed directly killing OnlyOffice's CEF
+# helper process at 3.97% mem available with nowhere to page out to.
+# zram-generator creates a compressed-RAM swap device via a systemd
+# generator (no fstab entry, no physical swapfile, no disk wear) —
+# the standard fix for this on immutable/bootc systems.
+#
+# zram-size = min(ram/2, 8192): up to half of RAM, capped at 8GB, as
+# compressed swap. zstd trades a bit more CPU for better compression
+# ratio than the lz4 default — worthwhile here since earlyoom's
+# ananicy-cpp neighbor already keeps CPU contention in check, and the
+# actual bottleneck this is fixing is memory, not CPU.
+# swap-priority = 100 makes it the preferred swap device (irrelevant
+# here since it's the only one, but correct if a physical swapfile is
+# ever added later).
+# ══════════════════════════════════════════════════════════════
+RUN dnf install -y zram-generator
+COPY config/systemd/zram-generator.conf /etc/systemd/zram-generator.conf
+
 # xremap — key remapping tool for Linux (https://github.com/xremap/xremap).
 # Not packaged for Fedora — it's a Rust project distributed via cargo or
 # prebuilt GitHub release binaries only. Installed here via cargo since a
@@ -245,6 +266,64 @@ RUN dnf install -y flatpak
 
 COPY config/systemd/niello-flatpak-setup.service /etc/systemd/system/niello-flatpak-setup.service
 RUN systemctl enable niello-flatpak-setup 2>/dev/null || true
+
+# ══════════════════════════════════════════════════════════════
+# DEFAULT FLATPAK APPS — installed system-wide at build time so every
+# fresh account has a baseline app set with zero post-install steps.
+# Explicitly listed (no --if-not-exists needed; -y handles reinstall
+# no-ops). Requires network access at build time to reach Flathub.
+# ══════════════════════════════════════════════════════════════
+RUN flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo && \
+    flatpak install -y --system flathub \
+    io.github.kolunmi.Bazaar \
+    com.bitwarden.desktop \
+    org.gnome.Calculator \
+    org.gnome.Calendar \
+    org.gnome.Snapshot \
+    org.gnome.Characters \
+    org.gnome.clocks \
+    org.gnome.Connections \
+    org.gnome.Contacts \
+    org.gnome.baobab \
+    org.gnome.SimpleScan \
+    com.github.finefindus.eyedropper \
+    org.fedoraproject.MediaWriter \
+    org.gnome.font-viewer \
+    org.gnome.Firmware \
+    it.mijorus.gearlever \
+    org.gimp.GIMP \
+    io.github.flattool.Ignition \
+    io.gitlab.adhami3310.Impression \
+    org.gnome.Logs \
+    org.gnome.Maps \
+    io.missioncenter.MissionCenter \
+    com.github.PintaProject.Pinta \
+    it.mijorus.smile \
+    org.gnome.SoundRecorder \
+    io.bassi.Amberol \
+    io.github.plrigaux.sysd-manager \
+    org.gnome.TextEditor \
+    org.gnome.Totem \
+    io.github.flattool.Warehouse \
+    org.gnome.Weather
+
+# ══════════════════════════════════════════════════════════════
+# DISTROBOX — podman-backed container tool + host command/app export.
+# podman is the required backend; distrobox-export (bundled with the
+# distrobox package) handles surfacing a container's binaries and
+# .desktop entries onto the host so they behave like native apps.
+# No extra permission flags are needed on the host side beyond having
+# podman + distrobox installed — export works out of the box once a
+# container is created and `distrobox-export --app <name>` (or
+# `--bin <path>`) is run from inside it. Enabling the user-level podman
+# socket so exported entries/binaries keep working across reboots
+# without the user needing to manually start it first.
+# ══════════════════════════════════════════════════════════════
+RUN dnf install -y podman distrobox
+
+RUN mkdir -p /etc/skel/.config/systemd/user/default.target.wants && \
+    ln -sf /usr/lib/systemd/user/podman.socket \
+        /etc/skel/.config/systemd/user/default.target.wants/podman.socket 2>/dev/null || true
 
 COPY config/systemd/niello-networking.service /etc/systemd/system/niello-networking.service
 RUN systemctl enable niello-networking 2>/dev/null || true

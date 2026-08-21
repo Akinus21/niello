@@ -127,9 +127,16 @@ RUN systemctl enable earlyoom
 # Electron apps, compilers, etc.) using rule sets, so a single runaway
 # process doesn't peg a core and starve the rest of the (already
 # CPU-constrained) Surface Laptop. Packaged via Terra (Fyra Labs), same
-# repo already added above for noctalia-shell.
-RUN dnf install -y --skip-broken ananicy-cpp ananicy-cpp-rules && \
-    systemctl enable ananicy-cpp
+# repo already added above for noctalia-shell. Rules are NOT a separate
+# RPM (there is no "ananicy-cpp-rules" package) — they're distributed
+# upstream as a plain directory of .rules files, pulled from CachyOS's
+# maintained rule set here.
+RUN dnf install -y --skip-broken ananicy-cpp && \
+    systemctl enable ananicy-cpp && \
+    git clone --depth=1 https://github.com/CachyOS/ananicy-rules.git /tmp/ananicy-rules && \
+    mkdir -p /etc/ananicy.d && \
+    cp /tmp/ananicy-rules/*.rules /etc/ananicy.d/ && \
+    rm -rf /tmp/ananicy-rules
 
 # xremap — key remapping tool for Linux (https://github.com/xremap/xremap).
 # Not packaged for Fedora — it's a Rust project distributed via cargo or

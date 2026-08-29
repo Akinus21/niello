@@ -234,7 +234,7 @@ layout {
 }
 
 // Autostart
-spawn-at-startup "qs" "-c" "noctalia-shell"
+spawn-at-startup "noctalia"
 
 hotkey-overlay {
     skip-at-startup

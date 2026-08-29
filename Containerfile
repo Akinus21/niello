@@ -83,16 +83,12 @@ RUN systemctl mask systemd-remount-fs.service
 # ── OS Identity ──────────────────────────────────────────────
 COPY usr/lib/os-release /usr/lib/os-release
 
-# ── Terra repo + Noctalia Shell ─────────────────────────────
-# Noctalia Shell — via Terra repo (Fyra Labs). Terra's metadata has shown
-# checksum-mismatch flakiness during builds — if the install fails here,
-# don't just print a comment nobody will see; leave a marker so niello-init
-# retries and warns the user at first login rather than silently booting
-# into a blank/broken desktop.
-RUN dnf install -y --skip-broken --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$releasever' terra-release && \
-    dnf install -y --skip-broken noctalia-shell || \
-    (echo "WARNING: noctalia-shell install failed at build time (Terra repo unavailable)" && \
-     touch /etc/niello-noctalia-missing)
+# ── Terra repo ───────────────────────────────────────────────
+# Needed by ananicy-cpp/cachyos-ananicy-rules further down. Noctalia
+# itself is no longer installed from here — Terra's noctalia-shell
+# package tracks the old v4/Quickshell architecture and doesn't
+# resolve; Noctalia v5 is built from source below instead.
+RUN dnf install -y --skip-broken --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$releasever' terra-release
 
 # ── Desktop Stack ────────────────────────────────────────────
 # gtk2 — provides libgdk-x11-2.0.so.0 (GTK2 GDK X11 backend)
@@ -127,7 +123,7 @@ RUN systemctl enable earlyoom
 # Electron apps, compilers, etc.) using rule sets, so a single runaway
 # process doesn't peg a core and starve the rest of the (already
 # CPU-constrained) Surface Laptop. Packaged via Terra (Fyra Labs), same
-# repo already added above for noctalia-shell. Rules ship as their own
+# repo already added above. Rules ship as their own
 # package, cachyos-ananicy-rules — not a git clone, and not named
 # "ananicy-cpp-rules" as originally guessed.
 RUN dnf install -y --skip-broken ananicy-cpp cachyos-ananicy-rules && \
@@ -532,7 +528,9 @@ COPY config/systemd/brew-update.service /etc/systemd/system/brew-update.service
 COPY config/systemd/brew-update.timer  /etc/systemd/system/brew-update.timer
 RUN systemctl enable brew-update.timer
 
-# ── Build deps: noctalia-greeter (meson + ninja) ───────────────────────────
+# ── Build deps: noctalia-greeter + noctalia (meson/ninja + just) ───────────
+# Covers both noctalia-greeter's meson build and noctalia itself (built via
+# `just`, per BUILDING.md's Fedora dependency list).
 RUN dnf install -y --skip-broken \
     meson \
     ninja-build \
@@ -559,7 +557,23 @@ RUN dnf install -y --skip-broken \
     pkgconf-pkg-config \
     wayland-devel \
     wayland-protocols-devel \
-    just
+    just \
+    libsecret-devel \
+    libsodium-devel \
+    sdbus-cpp-devel \
+    pipewire-devel \
+    wireplumber-devel \
+    pam-devel \
+    libcurl-devel \
+    libjxl-devel \
+    libsndfile-devel \
+    libqalculate-devel \
+    libxml2-devel \
+    md4c-devel \
+    libical-devel \
+    stb_image_resize2-devel \
+    stb_image_write-devel \
+    jemalloc-devel
 
 # ── Vendor stb headers (no distro package exists — stb is intentionally
 # header-only, drop-in code, never packaged with pkg-config) ──────────────
@@ -588,9 +602,63 @@ RUN dnf install -y --skip-broken \
     librsvg2 \
     greetd || true
 
+# ── Clone + build noctalia (the shell itself, v5, native C++/OpenGL ES —
+# no Quickshell/Qt involved, hence the Terra noctalia-shell package above
+# not applying). Built via `just` per BUILDING.md, installs to /usr/local.
+RUN git clone --depth=1 \
+    https://github.com/noctalia-dev/noctalia.git \
+    /tmp/noctalia && \
+    cd /tmp/noctalia && \
+    just configure release && \
+    just build release && \
+    just install release && \
+    cd / && rm -rf /tmp/noctalia
+
+# ── Runtime deps: noctalia ─────────────────────────────────────────────────
+RUN dnf install -y --skip-broken \
+    libsecret \
+    libsodium \
+    sdbus-cpp \
+    pipewire \
+    wireplumber \
+    pam \
+    libcurl \
+    libjxl \
+    libsndfile \
+    libqalculate \
+    libxml2 \
+    md4c \
+    libical \
+    jemalloc || true
+
 # ── Noctalia config ──────────────────────────────────────────
+# config.toml / wallpaper.toml / user-templates.toml are auto-merged by
+# Noctalia (every *.toml in the config dir, alphabetical). plugins.toml is
+# generated below by scanning Akinus21/noctalia-plugins for plugin ids so
+# every plugin in that repo ships enabled by default.
 RUN mkdir -p /etc/skel/.config/noctalia /etc/skel/.cache/noctalia
 COPY config/noctalia/ /etc/skel/.config/noctalia/
+
+# ── Noctalia plugins: register + enable all from Akinus21/noctalia-plugins
+RUN git clone --depth=1 https://github.com/Akinus21/noctalia-plugins.git /tmp/noctalia-plugins && \
+    PLUGIN_IDS=$(grep -rhoP '^\s*id\s*=\s*"\K[^"]+' /tmp/noctalia-plugins --include=plugin.toml | sort -u) && \
+    { \
+      echo '[plugins]'; \
+      echo 'auto_update = "all"'; \
+      echo -n 'enabled = ['; \
+      first=1; \
+      for id in $PLUGIN_IDS; do \
+        [ "$first" = "1" ] && first=0 || echo -n ', '; \
+        echo -n "\"$id\""; \
+      done; \
+      echo ']'; \
+      echo ''; \
+      echo '[[plugins.sources]]'; \
+      echo 'name = "akinus21"'; \
+      echo 'type = "git"'; \
+      echo 'url = "https://github.com/Akinus21/noctalia-plugins.git"'; \
+    } > /etc/skel/.config/noctalia/plugins.toml && \
+    rm -rf /tmp/noctalia-plugins
 
 # ── greetd + noctalia-greeter setup ──────────────────────────────────────
 RUN dnf install -y --skip-broken greetd || true && \

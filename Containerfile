@@ -554,6 +554,7 @@ RUN dnf install -y --skip-broken \
     greetd \
     dbus-daemon \
     polkit \
+    polkit-devel \
     pkgconf-pkg-config \
     wayland-devel \
     wayland-protocols-devel \
@@ -633,32 +634,16 @@ RUN dnf install -y --skip-broken \
 
 # ── Noctalia config ──────────────────────────────────────────
 # config.toml / wallpaper.toml / user-templates.toml are auto-merged by
-# Noctalia (every *.toml in the config dir, alphabetical). plugins.toml is
-# generated below by scanning Akinus21/noctalia-plugins for plugin ids so
-# every plugin in that repo ships enabled by default.
+# Noctalia (every *.toml in the config dir, alphabetical).
+#
+# NOTE: Akinus21/noctalia-plugins is v4-format (manifest.json + QML,
+# built for Quickshell's `qs -c noctalia-shell`) and is NOT compatible
+# with v5's plugin system (plugin.toml manifest + Luau entry scripts).
+# Shipping v5 with no custom plugins for now — revisit once the plugin
+# repo is ported to the v5 format, then re-add source registration +
+# `enabled = [...]` here.
 RUN mkdir -p /etc/skel/.config/noctalia /etc/skel/.cache/noctalia
 COPY config/noctalia/ /etc/skel/.config/noctalia/
-
-# ── Noctalia plugins: register + enable all from Akinus21/noctalia-plugins
-RUN git clone --depth=1 https://github.com/Akinus21/noctalia-plugins.git /tmp/noctalia-plugins && \
-    PLUGIN_IDS=$(grep -rhoP '^\s*id\s*=\s*"\K[^"]+' /tmp/noctalia-plugins --include=plugin.toml | sort -u) && \
-    { \
-      echo '[plugins]'; \
-      echo 'auto_update = "all"'; \
-      echo -n 'enabled = ['; \
-      first=1; \
-      for id in $PLUGIN_IDS; do \
-        [ "$first" = "1" ] && first=0 || echo -n ', '; \
-        echo -n "\"$id\""; \
-      done; \
-      echo ']'; \
-      echo ''; \
-      echo '[[plugins.sources]]'; \
-      echo 'name = "akinus21"'; \
-      echo 'type = "git"'; \
-      echo 'url = "https://github.com/Akinus21/noctalia-plugins.git"'; \
-    } > /etc/skel/.config/noctalia/plugins.toml && \
-    rm -rf /tmp/noctalia-plugins
 
 # ── greetd + noctalia-greeter setup ──────────────────────────────────────
 RUN dnf install -y --skip-broken greetd || true && \

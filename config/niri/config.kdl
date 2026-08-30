@@ -234,6 +234,20 @@ layout {
 }
 
 // Autostart
+//
+// Niri does not automatically export WAYLAND_DISPLAY/DISPLAY into the
+// systemd --user manager or the D-Bus session activation environment.
+// Without this, any D-Bus-activated service that needs a display —
+// notably gcr-prompter (org.gnome.keyring.SystemPrompter), used by
+// gnome-keyring to show unlock/create dialogs — fails immediately with
+// exit code 1 every time it's invoked, since it has nowhere to render.
+// This surfaces as apps like Bitwarden silently hanging when they touch
+// the Secret Service (e.g. clicking "My Vault"), because the keyring
+// unlock call blocks forever waiting on a prompt that can never appear.
+// This must run before anything that might touch the keyring/Secret
+// Service, so it's first.
+spawn-at-startup "dbus-update-activation-environment" "--systemd" "WAYLAND_DISPLAY" "DISPLAY" "XDG_CURRENT_DESKTOP" "XDG_SESSION_TYPE"
+
 spawn-at-startup "noctalia"
 
 hotkey-overlay {

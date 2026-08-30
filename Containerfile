@@ -92,6 +92,10 @@ RUN dnf install -y --skip-broken --nogpgcheck --repofrompath 'terra,https://repo
 
 # ── Desktop Stack ────────────────────────────────────────────
 # gtk2 — provides libgdk-x11-2.0.so.0 (GTK2 GDK X11 backend)
+# gcr — provides gcr-prompter, the GTK dialog gnome-keyring D-Bus-activates
+# (org.gnome.keyring.SystemPrompter) to show unlock/create-collection
+# prompts. Was previously only present transitively; pinned explicitly
+# so it can't silently disappear from a future minimal image.
 RUN dnf install -y \
     niri \
     alacritty \
@@ -100,6 +104,7 @@ RUN dnf install -y \
     okular \
     android-tools \
     gnome-keyring \
+    gcr \
     pipewire \
     wireplumber \
     polkit \

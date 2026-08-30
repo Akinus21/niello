@@ -5,7 +5,17 @@ PartOf=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/gnome-keyring-daemon --start --components=secrets
+# Belt-and-suspenders: Niri's own spawn-at-startup should already have
+# imported WAYLAND_DISPLAY/DISPLAY into systemd --user by the time
+# graphical-session.target is reached (see config/niri/config.kdl), but
+# re-running this here is idempotent and cheap, and protects against
+# ordering races or a future compositor swap that doesn't do the import
+# itself. Without this, org.gnome.keyring.SystemPrompter (gcr-prompter)
+# fails to activate — no display to render its unlock dialog on — and
+# any app touching the Secret Service (Bitwarden, browsers, etc.) hangs
+# indefinitely instead of erroring.
+ExecStartPre=-/usr/bin/dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
+ExecStart=/usr/bin/gnome-keyring-daemon --start --components=pkcs11,secrets,ssh
 Restart=on-failure
 RestartSec=5
 

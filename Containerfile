@@ -343,13 +343,13 @@ RUN curl -fsSL -o /tmp/yazi.zip \
     rm -rf /tmp/yazi.zip /tmp/yazi-extract
 
 # ══════════════════════════════════════════════════════════════
-# GUI FILE MANAGER — SpaceFM (https://github.com/IgnorantGuru/spacefm),
-# trying alongside yazi. NOTE: upstream has been unmaintained since ~2016
-# — --skip-broken so the build doesn't hard-fail if Fedora 44 has dropped
-# the package. Confirm after build whether this actually installed
-# (`rpm -q spacefm`) rather than assuming --skip-broken silently worked.
+# GUI FILE MANAGER — Nemo (https://github.com/linuxmint/nemo),
+# replacing SpaceFM (unmaintained since ~2016, wasn't cutting it).
+# GTK-native, inherits Purple Haze via config/gtk-3.0 + gtk-4.0
+# settings.ini automatically — no separate theming pass needed,
+# unlike a Qt file manager (e.g. Dolphin) would require.
 # ══════════════════════════════════════════════════════════════
-RUN dnf install -y --skip-broken spacefm
+RUN dnf install -y --skip-broken nemo
 
 # ══════════════════════════════════════════════════════════════
 # WEBKITGTK 6.0 — required by Iron (GTK4-native browser, built

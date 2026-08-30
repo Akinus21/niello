@@ -1,3 +1,21 @@
 # Niello user templates
 # Templates synced from skel to user home directory.
 # noctalia-greeter uses greeter.toml config instead of CSS templates.
+#
+# Enabling a template from the niello-managed noctalia-templates clone
+# (~/.config/niello/noctalia-templates, cloned at image build time — see
+# Containerfile) is just a [theme.templates.user.<id>] block below,
+# pointing input_path at the relevant file under that clone. This keeps
+# the enable step reproducible across niello rebuilds without needing a
+# new Containerfile edit per template.
+
+# AKSprayPaint — writes the active theme's colors to
+# ~/.config/noctalia/colors.json in AKSprayPaint's flat native format,
+# for every palette source (custom, community, builtin, wallpaper) alike.
+# Always enabled so colors.json exists by default, whether or not
+# AKSprayPaint itself is installed yet — AKSprayPaint's own inotify
+# watch picks it up the moment it's downloaded, no reconfiguration
+# needed.
+[theme.templates.user.akspraypaint]
+input_path  = "$XDG_CONFIG_HOME/niello/noctalia-templates/akspraypaint/akspraypaint-colors.json"
+output_path = "$XDG_CONFIG_HOME/noctalia/colors.json"

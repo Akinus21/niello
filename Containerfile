@@ -650,6 +650,24 @@ RUN dnf install -y --skip-broken \
 RUN mkdir -p /etc/skel/.config/noctalia /etc/skel/.cache/noctalia
 COPY config/noctalia/ /etc/skel/.config/noctalia/
 
+# ── Niello Noctalia templates ────────────────────────────────
+# Clones akinus/noctalia-templates (forge.akinus21.com) into
+# ~/.config/niello/noctalia-templates at build time. This is the
+# reproducible pattern for baking templates into Niello going
+# forward: this clone provides the raw <id>/template.toml +
+# input files, and enabling one is just adding the matching
+# [theme.templates.user.<id>] block to user-templates.toml
+# (config/noctalia/user-templates.toml here) pointing at the
+# relevant file under this clone. Only akspraypaint is enabled
+# for now — future templates land in the same repo and just need
+# their own block added below, no new clone step required.
+# Fixed at whatever commit is HEAD at image build time; use
+# `bootc upgrade` (which rebuilds the image) to pick up template
+# updates, rather than a runtime git pull.
+RUN git clone --depth=1 https://forge.akinus21.com/akinus/noctalia-templates.git \
+    /etc/skel/.config/niello/noctalia-templates && \
+    rm -rf /etc/skel/.config/niello/noctalia-templates/.git
+
 # ── greetd + noctalia-greeter setup ──────────────────────────────────────
 RUN dnf install -y --skip-broken greetd || true && \
     mkdir -p /etc/greetd

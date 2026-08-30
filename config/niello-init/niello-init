@@ -694,7 +694,31 @@ IRONEOF
 
     log "--- Noctalia color scheme ---"
 
-    sync_skel ".config/noctalia"
+    # NOTE: sync_skel only handles single files (it does `[[ -f "$src" ]]`),
+    # so `sync_skel ".config/noctalia"` here was a silent no-op against a
+    # directory — always hit the "not found" branch and skipped. Left as
+    # a comment for history; the actual noctalia asset syncing (theme,
+    # wallpaper, templates) is handled by explicit blocks below instead.
+
+    log "--- Niello Noctalia templates ---"
+    # Synced whole from skel rather than git-pulled at runtime: this
+    # clone is fixed at whatever commit was HEAD when the image was
+    # built (see Containerfile), so it only updates via `bootc upgrade`
+    # + rebuild, not on every login. Keeps template updates reproducible
+    # per-image rather than drifting live.
+    local NIELLO_TEMPLATES_SRC="/etc/skel/.config/niello/noctalia-templates"
+    local NIELLO_TEMPLATES_DEST="$HOME/.config/niello/noctalia-templates"
+    if [[ -d "$NIELLO_TEMPLATES_SRC" ]]; then
+        mkdir -p "$NIELLO_TEMPLATES_DEST"
+        if cp -r "$NIELLO_TEMPLATES_SRC"/. "$NIELLO_TEMPLATES_DEST/" 2>/dev/null; then
+            ok "Niello Noctalia templates: synced"
+        else
+            warn "Niello Noctalia templates: sync failed"
+        fi
+    else
+        warn "Niello Noctalia templates: source not in skel"
+    fi
+    sync_skel ".config/noctalia/user-templates.toml"
 
     local ACTIVE_THEME="Purple Haze"
     local SETTINGS_JSON="$HOME/.config/noctalia/settings.json"

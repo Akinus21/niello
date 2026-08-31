@@ -730,6 +730,19 @@ RUN mkdir -p /usr/local/bin && \
     install -m 755 /tmp/niello-init /usr/local/bin/niello-init && \
     rm -f /tmp/niello-init
 
+# ── System Updates Manager adapters ──────────────────────────
+# Homebrew adapter for the tordex/system-updater Noctalia plugin
+# (https://noctalia.dev/plugins/community/system-updater). This only
+# delivers the adapter files — the plugin itself must be installed via
+# Noctalia's plugin browser, and its `adapters_folder` setting pointed
+# at ~/.config/niello/system-updater-adapters (that setting lives in
+# Noctalia's GUI-managed settings.json, not something safe to inject
+# here).
+RUN mkdir -p /etc/skel/.config/niello/system-updater-adapters
+COPY config/niello/system-updater-adapters/ /etc/skel/.config/niello/system-updater-adapters/
+RUN chmod +x /etc/skel/.config/niello/system-updater-adapters/brew/check.py \
+             /etc/skel/.config/niello/system-updater-adapters/brew/update.py
+
 # niello-init is triggered via niello-init.service (login) and
 # niello-init.timer (midnight nightly) — see below. Previously also
 # triggered from /etc/zshenv and .zshrc, but zshenv fires on EVERY zsh

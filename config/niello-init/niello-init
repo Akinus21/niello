@@ -720,6 +720,21 @@ IRONEOF
     fi
     sync_skel ".config/noctalia/user-templates.toml"
 
+    log "--- System Updates Manager adapters ---"
+    local SYS_UPDATER_SRC="/etc/skel/.config/niello/system-updater-adapters"
+    local SYS_UPDATER_DEST="$HOME/.config/niello/system-updater-adapters"
+    if [[ -d "$SYS_UPDATER_SRC" ]]; then
+        mkdir -p "$SYS_UPDATER_DEST"
+        if cp -r "$SYS_UPDATER_SRC"/. "$SYS_UPDATER_DEST/" 2>/dev/null; then
+            chmod +x "$SYS_UPDATER_DEST"/brew/check.py "$SYS_UPDATER_DEST"/brew/update.py 2>/dev/null || true
+            ok "System Updates Manager adapters: synced"
+        else
+            warn "System Updates Manager adapters: sync failed"
+        fi
+    else
+        warn "System Updates Manager adapters: source not in skel"
+    fi
+
     local ACTIVE_THEME="Purple Haze"
     local SETTINGS_JSON="$HOME/.config/noctalia/settings.json"
     if [[ -f "$SETTINGS_JSON" ]]; then

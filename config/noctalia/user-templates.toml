@@ -19,3 +19,23 @@
 [theme.templates.user.akspraypaint]
 input_path  = "$XDG_CONFIG_HOME/niello/noctalia-templates/akspraypaint/akspraypaint-colors.json"
 output_path = "$XDG_CONFIG_HOME/noctalia/colors.json"
+
+# Niri window outline colors — focus-ring + border active/inactive/
+# urgent colors synced to the active palette. niri live-reloads on
+# save, no post_hook needed. Requires config.kdl to
+# `include "./noctalia-colors.kdl"` — see config/niri/config.kdl.
+[theme.templates.user.niri-colors]
+input_path  = "$XDG_CONFIG_HOME/niello/noctalia-templates/niri-colors/niri-colors.kdl"
+output_path = "$XDG_CONFIG_HOME/niri/noctalia-colors.kdl"
+
+# GTK3 accent colors — via @define-color overrides in gtk.css, the
+# mechanism Adwaita actually reads (unlike the legacy gtk-color-scheme
+# ini key). Picked up by GTK3 apps like Nemo on next launch.
+[theme.templates.user.gtk3-theme]
+input_path  = "$XDG_CONFIG_HOME/niello/noctalia-templates/gtk3-theme/gtk.css"
+output_path = "$XDG_CONFIG_HOME/gtk-3.0/gtk.css"
+
+# GTK4 accent colors — libadwaita's named colors, same idea as above.
+[theme.templates.user.gtk4-theme]
+input_path  = "$XDG_CONFIG_HOME/niello/noctalia-templates/gtk4-theme/gtk.css"
+output_path = "$XDG_CONFIG_HOME/gtk-4.0/gtk.css"

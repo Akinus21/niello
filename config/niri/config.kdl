@@ -233,6 +233,17 @@ layout {
     }
 }
 
+// Niri window outline colors — synced to the active Noctalia palette
+// via the niri-colors template (forge.akinus21.com/akinus/noctalia-
+// templates). Positioned after the main layout block above so its
+// focus-ring/border color overrides take precedence (niri includes
+// are positional). niri merges partial layout blocks from includes —
+// only these specific properties are overridden, not gaps/width/etc.
+// optional=true: this file only exists once Noctalia has rendered it
+// at least once — without optional, niri would fail to start entirely
+// if it launches before that first render (e.g. first boot).
+include optional=true "./noctalia-colors.kdl"
+
 // Autostart
 //
 // Niri does not automatically export WAYLAND_DISPLAY/DISPLAY into the

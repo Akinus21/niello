@@ -1,0 +1,7 @@
+[catalog.gtk4-theme]
+name = "GTK4 Theme (Niello)"
+category = "application"
+
+[templates.gtk4-theme]
+input_path = "gtk.css"
+output_path = "$XDG_CONFIG_HOME/gtk-4.0/gtk.css"

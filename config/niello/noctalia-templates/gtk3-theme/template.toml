@@ -1,0 +1,7 @@
+[catalog.gtk3-theme]
+name = "GTK3 Theme (Niello)"
+category = "application"
+
+[templates.gtk3-theme]
+input_path = "gtk.css"
+output_path = "$XDG_CONFIG_HOME/gtk-3.0/gtk.css"

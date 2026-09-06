@@ -667,6 +667,13 @@ COPY config/noctalia/ /etc/skel/.config/noctalia/
 RUN git clone --depth=1 https://forge.akinus21.com/akinus/noctalia-templates.git \
     /etc/skel/.config/niello/noctalia-templates && \
     rm -rf /etc/skel/.config/niello/noctalia-templates/.git
+# Overlay GTK3/4 theme templates (gtk3-theme/, gtk4-theme/) not yet in
+# the Forgejo repo — copy from the local source tree. Once those land
+# upstream, this COPY can be removed.
+COPY config/niello/noctalia-templates/gtk3-theme \
+     /etc/skel/.config/niello/noctalia-templates/gtk3-theme
+COPY config/niello/noctalia-templates/gtk4-theme \
+     /etc/skel/.config/niello/noctalia-templates/gtk4-theme
 
 # ── greetd + noctalia-greeter setup ──────────────────────────────────────
 RUN dnf install -y --skip-broken greetd || true && \

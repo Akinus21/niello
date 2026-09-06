@@ -16,14 +16,10 @@
 # per the docs.
 #
 # IMPORTANT: leave niri/gtk3/gtk4 OFF in Settings → Templates (i.e. out
-# of builtin_ids). The official built-in GTK templates require
-# switching the GTK theme to adw-gtk3 (Niello ships Adwaita-dark) and
-# write to a different file (noctalia.css, imported into gtk.css via a
-# post_hook) than the direct @define-color approach our gtk3-theme/
-# gtk4-theme user templates use below — running both writes conflicting
-# content to the same file. The built-in niri template's actual output
-# is also unconfirmed against our niri-colors template below. Safe to
-# revisit if/when Niello switches to adw-gtk3.
+# of builtin_ids). The official Noctalia gtk3/gtk4 templates also set
+# gsettings gtk-theme to adw-gtk3 and write to noctalia.css, conflicting
+# with our user templates — disable them to avoid double-writing.
+# Our gtk3-theme apply.sh sets gsettings to adw-gtk3-dark instead.
 [theme.templates]
 enable_builtin_templates   = true
 enable_community_templates = true

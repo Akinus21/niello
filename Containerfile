@@ -115,6 +115,7 @@ RUN dnf install -y \
     xdg-user-dirs \
     xdg-utils \
     newt \
+    adw-gtk3 \
     gtk2
 
 # earlyoom — userspace OOM mitigator, kills the worst offender before the

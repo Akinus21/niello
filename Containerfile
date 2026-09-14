@@ -484,11 +484,15 @@ RUN dnf install -y \
     poppler-utils \
     odt2txt \
     npm \
+    pnpm \
     dust \
     procs \
     starship \
     uutils-coreutils \
     vim-common
+
+# ── Pake CLI — Tauri-based webpage-to-desktop-app packager ────────
+RUN npm install -g pake-cli
 
 RUN sed -i 's|^SHELL=.*|SHELL=/bin/zsh|' /etc/default/useradd 2>/dev/null || \
     echo 'SHELL=/bin/zsh' >> /etc/default/useradd

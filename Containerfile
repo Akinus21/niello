@@ -301,6 +301,7 @@ RUN flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.
     io.missioncenter.MissionCenter \
     com.github.PintaProject.Pinta \
     it.mijorus.smile \
+    org.onlyoffice.desktopeditors \
     org.gnome.SoundRecorder \
     io.bassi.Amberol \
     io.github.plrigaux.sysd-manager \

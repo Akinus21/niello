@@ -8,7 +8,7 @@ ConditionPathExists=!/etc/niello-skip-boot-upgrade
 [Service]
 Type=oneshot
 ExecStart=/usr/local/bin/niello-boot-upgrade.sh
-TimeoutStartSec=30
+TimeoutStartSec=300
 RemainAfterExit=yes
 
 [Install]

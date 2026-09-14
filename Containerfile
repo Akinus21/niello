@@ -512,9 +512,15 @@ COPY config/zsh/zshrc    /etc/skel/.zshrc
 COPY config/just/justfile /etc/skel/justfile
 
 # ── bootc Update Config ──────────────────────────────────────
-RUN mkdir -p /etc/systemd/system/bootc-fetch-apply-updates.service.d && \
-    printf '[Service]\nExecStart=\nExecStart=/usr/bin/bootc upgrade --quiet\n' \
-    > /etc/systemd/system/bootc-fetch-apply-updates.service.d/stage-only.conf
+COPY config/systemd/bootc-fetch-wrapper.sh /usr/local/bin/bootc-fetch-wrapper.sh
+COPY config/systemd/rpm-ostree-countme-wrapper.sh /usr/local/bin/rpm-ostree-countme-wrapper.sh
+RUN chmod +x /usr/local/bin/bootc-fetch-wrapper.sh /usr/local/bin/rpm-ostree-countme-wrapper.sh && \
+    mkdir -p /etc/systemd/system/bootc-fetch-apply-updates.service.d && \
+    printf '[Service]\nExecStart=\nExecStart=/usr/local/bin/bootc-fetch-wrapper.sh\n' \
+    > /etc/systemd/system/bootc-fetch-apply-updates.service.d/retry.conf && \
+    mkdir -p /etc/systemd/system/rpm-ostree-countme.service.d && \
+    printf '[Service]\nExecStart=\nExecStart=/usr/local/bin/rpm-ostree-countme-wrapper.sh\n' \
+    > /etc/systemd/system/rpm-ostree-countme.service.d/retry.conf
 
 # ══════════════════════════════════════════════════════════════
 # BOOT-TIME bootc UPGRADE CHECK — replaces nightly timer

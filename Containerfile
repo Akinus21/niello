@@ -492,7 +492,8 @@ RUN dnf install -y \
     vim-common
 
 # ── Pake CLI — Tauri-based webpage-to-desktop-app packager ────────
-RUN npm install -g pake-cli
+# HOME=/root is not writable in bootc build context; use /var/tmp instead
+RUN HOME=/var/tmp npm install -g pake-cli
 
 RUN sed -i 's|^SHELL=.*|SHELL=/bin/zsh|' /etc/default/useradd 2>/dev/null || \
     echo 'SHELL=/bin/zsh' >> /etc/default/useradd

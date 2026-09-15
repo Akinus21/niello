@@ -492,12 +492,11 @@ RUN dnf install -y \
     vim-common
 
 # ── Pake CLI — Tauri-based webpage-to-desktop-app packager ────────
-# pnpm preferred over npm for pake-cli (per upstream docs)
 # Install globally at build time so `pake` is on PATH for any user;
 # pake run as a normal user will write src-tauri/target to ~/.local/share/pake
-# Use --global-bin-dir to /usr/local/bin (already in PATH, already writable)
-# since /root is not writable in bootc build context.
-RUN HOME=/var/tmp pnpm add -g pake-cli --global-bin-dir=/usr/local/bin
+# Using npm instead of pnpm: --prefix puts the binary at a fixed /usr/local
+# path that works regardless of what HOME is at build vs runtime.
+RUN HOME=/var/tmp npm install -g pake-cli --prefix=/usr/local
 
 # ── Tauri build dependencies (required by Pake at runtime) ────────
 # webkit2gtk4.1-devel is NOT needed — Pake ships pre-built Tauri binaries,

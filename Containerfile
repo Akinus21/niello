@@ -496,7 +496,9 @@ RUN dnf install -y \
 # Install globally at build time so `pake` is on PATH for any user;
 # pake run as a normal user will write src-tauri/target to ~/.local/share/pake
 # PNPM_HOME must be set since /root is not writable in bootc build context
-RUN HOME=/var/tmp PNPM_HOME=/var/tmp/pnpm pnpm add -g pake-cli && \
+RUN HOME=/var/tmp PNPM_HOME=/var/tmp/pnpm \
+    PATH=/var/tmp/pnpm/bin:$PATH \
+    pnpm add -g pake-cli && \
     ln -sf /var/tmp/pnpm/bin/pake /usr/local/bin/pake
 
 # ── Tauri build dependencies (required by Pake at runtime) ────────

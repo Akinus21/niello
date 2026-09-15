@@ -491,18 +491,9 @@ RUN dnf install -y \
     uutils-coreutils \
     vim-common
 
-# ── Pake CLI — Tauri-based webpage-to-desktop-app packager ────────
-# Install globally at build time so `pake` is on PATH for any user;
-# pake run as a normal user will write src-tauri/target to ~/.local/share/pake
-# Using npm instead of pnpm: --prefix puts the binary at a fixed /usr/local
-# path that works regardless of what HOME is at build vs runtime.
-RUN HOME=/var/tmp npm install -g pake-cli --prefix=/usr/local
-
-# ── Tauri build dependencies (required by Pake at runtime) ────────
-# webkit2gtk4.1-devel is NOT needed — Pake ships pre-built Tauri binaries,
-# webkitgtk6.0 (already installed) provides the runtime library.
-# libxdo is needed for xdotool-style window control in Pake apps.
-RUN dnf install -y --skip-broken libxdo-devel
+# ── Pake CLI — installed at runtime via niello-init (user-writable) ──
+# pake-cli needs to write src-tauri/target/ at runtime, so it's installed
+# as the user via niello-init, not baked into the image as root.
 
 RUN sed -i 's|^SHELL=.*|SHELL=/bin/zsh|' /etc/default/useradd 2>/dev/null || \
     echo 'SHELL=/bin/zsh' >> /etc/default/useradd

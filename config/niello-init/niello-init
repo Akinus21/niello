@@ -156,6 +156,21 @@ brew_ensure() {
     fi
 }
 
+# ── Pake CLI via pnpm ─────────────────────────────────────────────────────────
+pake_ensure() {
+    if command -v pake &>/dev/null; then
+        ok "Pake: present ($(pake --version 2>/dev/null || echo 'version unknown'))"
+        return 0
+    fi
+    log "Pake: installing via pnpm..."
+    if pnpm add -g pake-cli 2>/dev/null; then
+        ok "Pake: installed"
+    else
+        warn "Pake: install failed"
+        return 1
+    fi
+}
+
 # ── Binary installer ─────────────────────────────────────────────────────────
 install_binary() {
     local name="$1"; local url="$2"; local dest="$3"; local mode="${4:-755}"
@@ -357,7 +372,11 @@ main() {
             brew_ensure "iron"
             brew_ensure "akinus/akinus21-forge/anvil"
             brew_ensure "akinus/akinus21-forge/slag" || brew_ensure "akinus/akinus21-forge/akclip"
-            log "--- Iron browser desktop ---"
+
+        log "--- Pake CLI (webpage-to-desktop packager) ---"
+        pake_ensure
+
+        log "--- Iron browser desktop ---"
             local IRON_BIN=""
             for p in "$HOME/.homebrew/bin/iron" "$HOME/.linuxbrew/bin/iron" "/home/linuxbrew/.linuxbrew/bin/iron" "/usr/local/bin/iron"; do
                 [[ -x "$p" ]] && { IRON_BIN="$p"; break; }

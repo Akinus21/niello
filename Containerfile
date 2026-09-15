@@ -495,7 +495,9 @@ RUN dnf install -y \
 # pnpm preferred over npm for pake-cli (per upstream docs)
 # Install globally at build time so `pake` is on PATH for any user;
 # pake run as a normal user will write src-tauri/target to ~/.local/share/pake
-RUN HOME=/var/tmp pnpm add -g pake-cli
+# PNPM_HOME must be set since /root is not writable in bootc build context
+RUN HOME=/var/tmp PNPM_HOME=/var/tmp/pnpm pnpm add -g pake-cli && \
+    ln -sf /var/tmp/pnpm/bin/pake /usr/local/bin/pake
 
 # ── Tauri build dependencies (required by Pake at runtime) ────────
 # webkit2gtk4.1-devel is NOT needed — Pake ships pre-built Tauri binaries,

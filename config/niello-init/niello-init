@@ -521,6 +521,33 @@ IRONEOF
             ok "OnlyOffice present"
         fi
 
+    log "--- XDG Desktop Portal ---"
+    # xdg-desktop-portal runs as a user service (no system service on Fedora).
+    # Required for file pickers in browsers/Electron apps and Flatpak sandboxing.
+    if command -v xdg-desktop-portal &>/dev/null; then
+        ok "xdg-desktop-portal: found at $(command -v xdg-desktop-portal)"
+    else
+        warn "xdg-desktop-portal: not in PATH — checking /usr/libexec"
+        if [[ -x /usr/libexec/xdg-desktop-portal ]]; then
+            export PATH="${PATH}:/usr/libexec"
+            ok "xdg-desktop-portal: added /usr/libexec to PATH"
+        else
+            warn "xdg-desktop-portal: binary not found at /usr/libexec"
+        fi
+    fi
+    if systemctl --user list-unit-files &>/dev/null 2>&1; then
+        if systemctl --user is-active --quiet xdg-desktop-portal.service 2>/dev/null; then
+            ok "xdg-desktop-portal: user service active"
+        else
+            log "xdg-desktop-portal: starting user service..."
+            systemctl --user enable --now xdg-desktop-portal.service 2>/dev/null \
+                && ok "xdg-desktop-portal: user service enabled" \
+                || warn "xdg-desktop-portal: user service failed to start"
+        fi
+    else
+        warn "xdg-desktop-portal: user systemd not available"
+    fi
+
         if [[ -f /etc/niello-gaming ]]; then
             GAMING_FLATPAKS=(
                 "com.valvesoftware.Steam"

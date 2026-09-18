@@ -257,10 +257,14 @@ RUN dnf install -y --skip-broken \
 # ══════════════════════════════════════════════════════════════
 # ── XDG DESKTOP PORTAL — required for Flatpak sandboxing, screen share,
 # file picker in browsers/ Electron apps, and wayland screen share ─────
+# Note: binary lives at /usr/libexec (not in PATH) — add it to PATH via
+# profile.d so portals work without needing /usr/local to be writable.
 RUN dnf install -y \
     xdg-desktop-portal \
-    xdg-desktop-portal-wlr && \
-    ln -sf /usr/libexec/xdg-desktop-portal /usr/local/bin/xdg-desktop-portal
+    xdg-desktop-portal-wlr
+
+COPY config/profile.d/xdg-portal-path.sh /etc/profile.d/xdg-portal-path.sh
+RUN chmod +x /etc/profile.d/xdg-portal-path.sh
 
 # ══════════════════════════════════════════════════════════════
 # FLATPAK — runtime + Flathub remote

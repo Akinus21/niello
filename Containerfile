@@ -255,11 +255,12 @@ RUN dnf install -y --skip-broken \
     libtool
 
 # ══════════════════════════════════════════════════════════════
-# XDG DESKTOP PORTAL — required for Flatpak sandboxing, screen share
-# ══════════════════════════════════════════════════════════════
+# ── XDG DESKTOP PORTAL — required for Flatpak sandboxing, screen share,
+# file picker in browsers/ Electron apps, and wayland screen share ─────
 RUN dnf install -y \
     xdg-desktop-portal \
-    xdg-desktop-portal-wlr
+    xdg-desktop-portal-wlr && \
+    ln -sf /usr/libexec/xdg-desktop-portal /usr/local/bin/xdg-desktop-portal
 
 # ══════════════════════════════════════════════════════════════
 # FLATPAK — runtime + Flathub remote

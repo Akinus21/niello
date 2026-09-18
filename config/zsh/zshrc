@@ -7,7 +7,7 @@ fi
 unsetopt hist_verify
 
 # PATH — single declaration, deduplicated
-export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:$PATH"
+export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:/usr/libexec:$PATH"
 
 # Oh My Zsh
 export ZSH="$HOME/.oh-my-zsh"

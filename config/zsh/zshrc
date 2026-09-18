@@ -38,9 +38,9 @@ if command -v fzf &>/dev/null; then
 fi
 
 # eza aliases (modern ls)
-alias ls='eza --icons'
-alias ll='eza -lah --icons --git'
-alias lt='eza --tree --icons'
+alias ls='eza -a --icons=always'
+alias ll='eza -lah --icons=always --git'
+alias lt='eza --icons=always --tree'
 
 # bat alias
 alias cat='bat --style=auto'
